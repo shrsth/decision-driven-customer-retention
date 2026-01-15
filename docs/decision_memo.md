@@ -1,182 +1,148 @@
-# Decision Memo  
-## Decision-Driven Customer Retention & Revenue Impact System
+# Decision Memo
+## Decision-Driven Customer Retention System
 
-**Author:** Shresth Modi  
-**Role Focus:** AI / ML Engineer · Data Science Engineer  
-
----
-
-## 1. Objective
-
-Design a **decision-support system** that identifies **which customers should be prioritized for retention** under **limited budget and operational constraints**, with the goal of **minimizing expected revenue loss** — not merely predicting churn.
+### Author
+Shresth Modi
 
 ---
 
-## 2. Business Problem
+## 1. Executive Summary
 
-Customer churn negatively impacts recurring revenue, but **retention resources are finite**.  
-Attempting to retain every at-risk customer is economically inefficient and operationally infeasible.
+This system is designed to make retention decisions, not just predict churn.
 
-The real business question is:
-
-> **Given limited retention budget and capacity, which customers should we prioritize to maximize revenue saved?**
+While a churn model estimates the probability that a customer may leave, business value is created only when predictions are converted into economically justified actions. This project implements a decision engine that selects who to act on, why, and how under real-world budget and operational constraints, and validates that these decisions remain stable under changing conditions.
 
 ---
 
-## 3. Design Philosophy
+## 2. Why Churn Prediction Alone Is Insufficient
 
-This project was intentionally built as a **decision system**, not a pure ML model.
+A churn probability answers only one question:
 
-Key principles:
-- Behavior-driven churn modeling (not random labels)
-- Strong feature engineering before modeling
-- Interpretable ML used as a *supporting tool*
-- Explicit cost–value trade-off analysis
-- Budget- and capacity-aware decision logic
+“How likely is this customer to leave?”
 
----
+It does not answer:
+- Whether the customer is worth saving
+- Whether the retention cost is justified
+- Whether the business has capacity to act
 
-## 4. Data & Signals
+For example:
+- A customer with very high churn probability but low lifetime value may not justify intervention.
+- A customer with moderate churn probability and high lifetime value may be economically critical.
 
-### Behavioral Signals
-- Engagement velocity (trend of usage over time)
-- Recent engagement change
-- Usage frequency
-- Usage recency
-- Friction intensity (support interactions per usage)
-
-### Economic Signals
-- Customer Lifetime Value (CLV)
-- Estimated retention cost per customer
-
-Churn is modeled as an **outcome that emerges from behavioral degradation**, not a random event.
+Therefore, churn probability is treated as a signal — not a decision rule.
 
 ---
 
-## 5. Modeling Approach
+## 3. Decision Framework Used
 
-### Churn Risk Estimation
-- **Logistic Regression** used for probabilistic and interpretable outputs
-- Focus on understanding *drivers of churn*, not maximizing accuracy
+The system follows a decision-first architecture:
 
-The model outputs **churn probability**, not retention decisions.
+1. Predict churn probability using Logistic Regression
+2. Estimate economic impact:
+   - Revenue at risk = churn_probability × CLV
+   - Net retention value = revenue at risk − retention cost
+3. Prioritize customers based on economic efficiency
+4. Apply business strategy (Conservative / Balanced / Aggressive)
+5. Enforce real-world constraints:
+   - Retention budget
+   - Operational capacity
+6. Assign actions:
+   - ACT / MONITOR / IGNORE
 
----
-
-## 6. Revenue-at-Risk Framework
-
-For each customer:
-
-\[
-\text{Revenue at Risk} = P(\text{churn}) \times \text{CLV}
-\]
-
-This quantifies **expected revenue loss**, not hypothetical loss.
+Only customers with positive net retention value are eligible for action.
 
 ---
 
-## 7. Net Retention Value
+## 4. Why Economic Efficiency Drives Decisions
 
-Retention is justified only if expected revenue saved exceeds intervention cost:
+Customers are ranked using economic efficiency rather than raw churn probability:
 
-\[
-\text{Net Retention Value} = \text{Revenue at Risk} - \text{Retention Cost}
-\]
+efficiency = net_retention_value / retention_cost
 
-This ensures decisions are **economically rational**.
+This ensures:
+- Each unit of budget maximizes retained revenue
+- High-cost, low-return interventions are avoided
+- Decisions scale rationally as constraints change
 
----
-
-## 8. Optimization Under Constraints
-
-Retention was framed as a **budget-constrained optimization problem**.
-
-**Objective:**  
-Maximize total expected revenue saved.
-
-**Constraints:**
-- Fixed retention budget
-- Limited operational capacity
-
-### Selection Strategy
-Customers are ranked by:
-
-\[
-\text{Efficiency} = \frac{\text{Net Retention Value}}{\text{Retention Cost}}
-\]
-
-This prioritizes **high-ROI interventions** first.
+This mirrors how real retention teams operate under finite resources.
 
 ---
 
-## 9. Action Segmentation
+## 5. Risk Bands Are Operational, Not Statistical
 
-The system outputs **explicit action segments**:
+Risk bands (LOW / MEDIUM / HIGH) are used to:
+- Simplify decision logic
+- Trigger different retention playbooks
+- Improve executive interpretability
 
-| Segment | Definition | Action |
-|------|---------|-------|
-| **ACT** | Selected under constraints | Immediate retention action |
-| **MONITOR** | Positive value but not selected | Observe / low-cost nudges |
-| **IGNORE** | Negative net value | No intervention |
+They are not probability calibration artifacts or confidence intervals.
 
-### Final Distribution
-- **ACT:** 300 customers  
-- **MONITOR:** 824 customers  
-- **IGNORE:** 3,876 customers  
-
-This confirms that **most customers should not be targeted**, even if churn risk exists.
+Risk bands represent operational urgency, not model certainty.
 
 ---
 
-## 10. What-If / Sensitivity Analysis
+## 6. Why a Greedy, Constraint-Aware Selector Is Used
 
-Scenario testing demonstrated:
+Customer selection is performed using a greedy, monotonic algorithm under budget and capacity constraints.
 
-- Reducing budget had **no impact** when capacity was the binding constraint
-- Increasing capacity increased revenue saved, but with **diminishing marginal returns**
-- High-efficiency customers were consistently prioritized first
+This approach is chosen because it is:
+- Deterministic
+- Explainable
+- Auditable
+- Easy to reason about in production systems
 
-This validated the **robustness and stability** of the decision logic.
-
----
-
-## 11. Key Insights
-
-1. Churn probability alone is insufficient for decision-making  
-2. Retention should be framed as an **investment decision**, not a classification task  
-3. A small subset of customers drives most retention ROI  
-4. Budget and capacity constraints materially change optimal strategy  
+While more complex optimization techniques exist, this design prioritizes clarity and safety over theoretical optimality.
 
 ---
 
-## 12. Recommendation
+## 7. Decision Stability as a Deployment Requirement
 
-Adopt a **decision-driven retention strategy** that:
+A deployable decision system must behave consistently under small operational changes.
 
-- Uses churn risk as an input, not the final decision
-- Explicitly models customer value and retention cost
-- Respects operational and financial constraints
-- Produces clear, executable action segments
+This system explicitly measures:
+- Stability under ±10% budget changes
+- Stability under ±10% capacity changes
 
-This approach maximizes revenue efficiency while avoiding unnecessary retention spend.
+High stability indicates:
+- Strong prioritization
+- Clear separation between high-value and marginal customers
+- Low risk of decision thrashing during real operations
 
----
-
-## 13. Limitations & Future Work
-
-- Retention success probability assumed uniform
-- Retention cost treated as static
-- No channel-level uplift modeling
-
-Future extensions may include:
-- Dynamic retention cost estimation
-- Channel-specific intervention modeling
-- Real-time dashboard integration
+Instability is treated as a design flaw, not an acceptable outcome.
 
 ---
 
-## 14. Conclusion
+## 8. Tiered Architecture Rationale
 
-This project demonstrates how **data science, machine learning, and business reasoning** can be combined to move from *prediction* to **decision-making**.
+The system is intentionally split into tiers:
 
-The result is a **practical, interpretable, and constraint-aware retention system** suitable for real-world deployment.
+- Tier 1 (core.py):
+  Pure decision engine — framework-agnostic, testable, reusable
+
+- Tier 2/3 (analysis.py):
+  Strategy comparison, robustness testing, counterfactual analysis
+
+- Dashboard (dashboard.py):
+  Simulation and communication layer only
+
+This separation ensures the decision logic can be deployed independently of the UI.
+
+---
+
+## 9. Key Design Principle
+
+Models do not create value. Decisions do.
+
+This project demonstrates how machine learning becomes valuable only when embedded inside a constrained, economically grounded decision system.
+
+---
+
+## 10. Final Takeaway
+
+This is not a churn prediction dashboard.
+
+It is a decision-driven retention engine that:
+- Converts predictions into actions
+- Optimizes under constraints
+- Explains decisions
+- Validates robustness before deployment
