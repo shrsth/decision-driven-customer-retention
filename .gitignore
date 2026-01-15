@@ -1,0 +1,25 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.env
+venv/
+.venv/
+
+# Streamlit
+.streamlit/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Data (DO NOT PUSH DATA)
+data/raw/*.csv
+data/processed/*.csv
+
+# Notebooks
+notebooks/
+
+# Docs build / temp
+docs/_build/
