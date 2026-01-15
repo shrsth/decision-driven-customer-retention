@@ -39,15 +39,16 @@ This project explicitly answers those questions.
 
 ## 🏗️ System Architecture (Tiered by Design)
 app/
-├── core.py # Tier 1: Pure decision engine (NO Streamlit)
-├── analysis.py # Tier 2/3: Strategy comparison & robustness testing
-└── dashboard.py # Streamlit UI (simulation layer only)
+├── core.py        # Tier 1: Pure decision engine (NO Streamlit)
+├── analysis.py    # Tier 2/3: Strategy comparison & robustness testing
+└── dashboard.py   # Streamlit UI (simulation layer only)
 
 src/
-├── features/ # Behavioral feature engineering
-├── models/ # Logistic regression churn model
-├── decision/ # Strategy & constraint logic
-└── tests/ # Unit tests for decision correctness
+├── features/      # Behavioral feature engineering
+├── models/        # Logistic regression churn model
+├── decision/      # Strategy & constraint logic
+└── tests/         # Unit tests for decision correctness
+
 
 
 ### Why tier separation matters
