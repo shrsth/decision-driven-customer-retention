@@ -15,7 +15,7 @@ behavior = pd.read_csv("data/raw/behavior.csv")
 
 from ..features.feature_builder import build_feature_table
 
-df = build_feature_table(customers, behavior)
+df = build_feature_table()
 
 # ---------------------------
 # Select features

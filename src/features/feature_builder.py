@@ -1,6 +1,7 @@
 import pandas as pd
 import numpy as np
 from numpy.polynomial.polynomial import polyfit
+from src.sql_feature_queries import build_features_from_sql
 
 
 # ---------------------------
@@ -47,9 +48,11 @@ def compute_total_friction(behavior_df):
 
 
 # ---------------------------
-# Build Feature Table
+# Build Feature Table (SQL-backed)
 # ---------------------------
-def build_feature_table(customers_df, behavior_df):
+def build_feature_table():
+    customers_df, behavior_df = build_features_from_sql()
+
     avg_usage = compute_avg_usage(behavior_df)
     velocity = compute_engagement_velocity(behavior_df)
     friction = compute_total_friction(behavior_df)
@@ -61,9 +64,9 @@ def build_feature_table(customers_df, behavior_df):
 
     features = (
         customers_df
-        .merge(avg_usage, on="customer_id")
-        .merge(velocity, on="customer_id")
-        .merge(friction, on="customer_id")
+        .merge(avg_usage, on="customer_id", how="left")
+        .merge(velocity, on="customer_id", how="left")
+        .merge(friction, on="customer_id", how="left")
         .merge(recency, on="customer_id", how="left")
         .merge(frequency, on="customer_id", how="left")
         .merge(recent_velocity, on="customer_id", how="left")
@@ -85,7 +88,6 @@ def compute_recency(behavior_df, usage_threshold=1.0):
     )
 
     max_week = behavior_df["week"].max()
-
     last_active_week["recency"] = max_week - last_active_week["last_active_week"]
 
     return last_active_week[["customer_id", "recency"]]
@@ -114,7 +116,6 @@ def compute_frequency(behavior_df, window=12, usage_threshold=1.0):
 def compute_recent_velocity(behavior_df, window=8):
     records = []
     max_week = behavior_df["week"].max()
-
     recent = behavior_df[behavior_df["week"] >= max_week - window]
 
     for customer_id, group in recent.groupby("customer_id"):
@@ -147,6 +148,8 @@ def compute_recent_friction_intensity(behavior_df, window=8):
         .reset_index()
     )
 
-    agg["friction_intensity"] = agg["recent_support_tickets"] / (agg["recent_usage"] + 1e-6)
+    agg["friction_intensity"] = (
+        agg["recent_support_tickets"] / (agg["recent_usage"] + 1e-6)
+    )
 
     return agg[["customer_id", "friction_intensity"]]

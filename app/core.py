@@ -86,7 +86,7 @@ def load_and_compute_decisions(
     # -----------------------------
     # Feature engineering
     # -----------------------------
-    df = build_feature_table(customers, behavior)
+    df = build_feature_table()
 
     # -----------------------------
     # Churn prediction (signal only)
