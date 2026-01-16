@@ -48,7 +48,7 @@ The project follows a **tiered architecture** to clearly separate decision logic
 - **dashboard.py** — Streamlit-based UI used only for simulation, visualization, and communication of decisions.
 
 ### Source Layer
-- **features/** — Behavioral feature engineering built from structured customer and interaction data.
+- **features/** — Behavioral feature engineering built from SQL-extracted customer and interaction data.
 - **models/** — Logistic regression churn model used strictly as a risk signal.
 - **decision/** — Strategy logic and budget/capacity-constrained customer selection policies.
 - **tests/** — Unit tests validating feature pipelines and decision correctness.
@@ -59,6 +59,15 @@ The project follows a **tiered architecture** to clearly separate decision logic
 - UI can be replaced without touching decision logic  
 
 ---
+## 🗄️ Data Pipeline (SQL + Python)
+
+Customer and behavioral data is stored in a relational **SQLite database**.
+
+- **SQL** is used to extract and structure customer-level and weekly behavioral data.
+- **Pandas & NumPy** are used for feature engineering (engagement velocity, recency, frequency, friction intensity).
+- The machine learning model and decision engine operate only on engineered features.
+
+The database itself is intentionally excluded from version control and is generated locally using data-loading scripts, mirroring real-world production workflows.
 
 ## ⚙️ Decision Framework
 
