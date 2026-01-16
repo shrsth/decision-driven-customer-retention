@@ -6,6 +6,7 @@ __pycache__/
 .env
 venv/
 .venv/
+python
 
 # Streamlit
 .streamlit/
@@ -15,8 +16,9 @@ venv/
 Thumbs.db
 
 # Data (DO NOT PUSH DATA)
-data/raw/*.csv
-data/processed/*.csv
+data/
+*.db
+*.sqlite
 
 # Notebooks
 notebooks/
