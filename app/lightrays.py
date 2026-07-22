@@ -255,11 +255,17 @@ def render_lightrays(
     loader = (
         "<script>(function(){try{"
         "var doc = window.parent.document;"
-        "if (doc.getElementById('lr-bg-script')) return;"
+        "if (!doc.getElementById('lr-bg-script')) {"
         "var s = doc.createElement('script');"
         "s.type = 'module'; s.id = 'lr-bg-script';"
         "s.textContent = " + json.dumps(module_code) + ";"
         "doc.head.appendChild(s);"
+        "}"
+        # Collapse this component's own Streamlit container so its (invisible)
+        # iframe slot doesn't leave an empty flex gap above the page header.
+        "var fe = window.frameElement;"
+        "if (fe) { var c = fe.closest('[data-testid=\"stElementContainer\"]');"
+        " if (c) c.style.display = 'none'; }"
         "}catch(e){console.error('lightrays bg inject failed', e);}})();</script>"
     )
     components.html(loader, height=0)

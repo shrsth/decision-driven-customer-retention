@@ -76,6 +76,10 @@ _CSS = f"""
 [data-testid="stToolbarActions"] {{ display: none; }}
 .block-container {{ padding-top: 2.2rem; max-width: 1320px; }}
 
+/* Collapse the injected-CSS element container so it doesn't add a flex gap
+   above the header. A <style> still applies while its container is hidden. */
+[data-testid="stElementContainer"]:has(style) {{ display: none !important; }}
+
 /* Keep the "expand sidebar" button (shown when the sidebar is collapsed)
    visible, sized, and clickable above the banner. Streamlit 1.53 renders it
    as stExpandSidebarButton and can collapse it to zero width. */
