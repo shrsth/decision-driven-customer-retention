@@ -63,7 +63,7 @@ _CSS = f"""
 
 /* Light scrim over the LightRays background canvas (injected behind .stApp at
    z-index -1): keeps text readable while letting the rays show with character. */
-.stApp {{ background: rgba(11, 12, 15, 0.5); font-family: 'Inter', system-ui, sans-serif; }}
+.stApp {{ background: rgba(11, 12, 15, 0.38); font-family: 'Inter', system-ui, sans-serif; }}
 [data-testid="stAppViewContainer"], [data-testid="stMain"] {{ background: transparent; }}
 /* Set the body font on the app root only — never on `span`, or it clobbers
    Streamlit's Material icon font (the sidebar-collapse arrow etc.). */
@@ -145,6 +145,32 @@ button[data-baseweb="tab"] {{
 }}
 button[data-baseweb="tab"][aria-selected="true"] {{ color: var(--accent); }}
 [data-baseweb="tab-highlight"] {{ background-color: var(--accent); }}
+
+/* Sliders — refined: white thumb with an accent glow ring, rounded track */
+[data-testid="stSlider"] [role="slider"] {{
+    background-color: #ffffff !important;
+    border: none !important;
+    box-shadow: 0 0 0 3px rgba(57,135,229,0.30), 0 2px 6px rgba(0,0,0,0.45) !important;
+    transition: box-shadow 0.2s ease, transform 0.15s ease;
+}}
+[data-testid="stSlider"] [role="slider"]:hover,
+[data-testid="stSlider"] [role="slider"]:focus {{
+    transform: scale(1.18);
+    box-shadow: 0 0 0 5px rgba(57,135,229,0.22), 0 0 16px rgba(57,135,229,0.55) !important;
+    outline: none !important;
+}}
+[data-baseweb="slider"] > div > div {{ border-radius: 999px !important; }}
+[data-testid="stSliderThumbValue"] {{
+    color: var(--accent) !important;
+    font-family: 'Space Grotesk', 'Inter', sans-serif !important;
+    font-weight: 600 !important;
+    font-size: 0.82rem !important;
+}}
+[data-testid="stSliderTickBar"] {{ margin-top: 2px; }}
+[data-testid="stSliderTickBarMin"], [data-testid="stSliderTickBarMax"] {{
+    color: var(--text-muted) !important;
+    font-size: 0.66rem !important;
+}}
 
 /* Section headers */
 .sec {{ margin: 1.5rem 0 0.7rem; }}

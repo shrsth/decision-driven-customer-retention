@@ -36,7 +36,8 @@ st.set_page_config(
     layout="wide",
 )
 inject_css()
-render_lightrays()
+render_lightrays(color="#82b4f0", opacity=1.0, spread=1.0, ray_length=1.9,
+                 fade_distance=1.3, saturation=1.0)
 
 
 @st.cache_resource(show_spinner="First run: downloading data and training model…")
