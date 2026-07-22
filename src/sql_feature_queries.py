@@ -1,40 +1,36 @@
+"""SQL access layer for the customers table in SQLite."""
+
 import sqlite3
-import pandas as pd
 from pathlib import Path
 
-BASE_DIR = Path(__file__).resolve().parents[1]
-DB_PATH = BASE_DIR / "data" / "db" / "retention.db"
+import pandas as pd
+
+from src.config import DB_PATH
 
 
-def build_features_from_sql():
-    conn = sqlite3.connect(DB_PATH)
+def load_customers_from_sql(db_path: Path = DB_PATH) -> pd.DataFrame:
+    db_path = Path(db_path)
+    if not db_path.exists():
+        raise FileNotFoundError(
+            f"Database not found at {db_path} — run `python -m src.pipeline` first."
+        )
+    with sqlite3.connect(db_path) as conn:
+        return pd.read_sql("SELECT * FROM customers", conn)
 
-    # ---------------------------
-    # Customer-level data
-    # ---------------------------
-    customers_query = """
-    SELECT
-        customer_id,
-        CLV,
-        MRR,
-        retention_cost,
-        churned
-    FROM customers
+
+def churn_summary_by_segment(db_path: Path = DB_PATH) -> pd.DataFrame:
+    """In-database churn summary by contract and internet service."""
+    query = """
+        SELECT
+            Contract,
+            InternetService,
+            COUNT(*)                    AS customers,
+            ROUND(AVG(churned), 3)      AS churn_rate,
+            ROUND(AVG(MRR), 2)          AS avg_mrr,
+            ROUND(AVG(CLV), 2)          AS avg_clv
+        FROM customers
+        GROUP BY Contract, InternetService
+        ORDER BY churn_rate DESC
     """
-    customers_df = pd.read_sql_query(customers_query, conn)
-
-    # ---------------------------
-    # Weekly behavior data
-    # ---------------------------
-    behavior_query = """
-    SELECT
-        customer_id,
-        week,
-        weekly_usage,
-        support_tickets
-    FROM behavior_events
-    """
-    behavior_df = pd.read_sql_query(behavior_query, conn)
-
-    conn.close()
-    return customers_df, behavior_df
+    with sqlite3.connect(Path(db_path)) as conn:
+        return pd.read_sql(query, conn)

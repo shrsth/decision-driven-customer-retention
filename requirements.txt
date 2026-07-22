@@ -1,4 +1,9 @@
 numpy
 pandas
+scikit-learn>=1.2
+scipy
+streamlit
+plotly
+joblib
 matplotlib
-scikit-learn
+pytest

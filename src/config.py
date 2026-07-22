@@ -1,0 +1,38 @@
+"""Central configuration: paths, dataset source, and economic assumptions."""
+
+from pathlib import Path
+
+BASE_DIR = Path(__file__).resolve().parents[1]
+
+RAW_DATA_PATH = BASE_DIR / "data" / "raw" / "telco_churn.csv"
+DB_PATH = BASE_DIR / "data" / "db" / "retention.db"
+MODEL_PATH = BASE_DIR / "data" / "models" / "churn_model.joblib"
+METRICS_PATH = BASE_DIR / "data" / "models" / "metrics.json"
+
+TELCO_URL = (
+    "https://raw.githubusercontent.com/IBM/telco-customer-churn-on-icp4d/"
+    "master/data/Telco-Customer-Churn.csv"
+)
+
+# --------------------------------------------------
+# Economic assumptions (see docs/economic_assumptions.md)
+# --------------------------------------------------
+# CLV forward horizon: how many months ahead expected remaining lifetime is
+# accumulated. Expected remaining life itself is derived per-contract from a
+# Kaplan-Meier survival curve (src/survival.py), not a hand-tuned formula.
+CLV_HORIZON_MONTHS = 60
+
+# Retention offer: a win-back discount of DISCOUNT_RATE off MRR for
+# OFFER_MONTHS, plus a contract-dependent outreach cost.
+DISCOUNT_RATE = 0.30
+OFFER_MONTHS = 3
+
+# Probability that an intervention actually saves an at-risk customer.
+# Interventions are not guaranteed to work; industry retention-offer
+# acceptance rates are typically 20-40%.
+SAVE_RATE = 0.30
+OUTREACH_COST = {
+    "Month-to-month": 10.0,
+    "One year": 25.0,
+    "Two year": 40.0,
+}

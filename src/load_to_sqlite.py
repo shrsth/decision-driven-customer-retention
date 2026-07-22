@@ -1,18 +1,25 @@
+"""Load the cleaned, economics-enriched customer table into SQLite."""
+
 import sqlite3
-import pandas as pd
 from pathlib import Path
 
-BASE_DIR = Path(__file__).resolve().parents[1]
-DB_PATH = BASE_DIR / "data" / "db" / "retention.db"
+import pandas as pd
 
-customers = pd.read_csv(BASE_DIR / "data" / "raw" / "customers.csv")
-behavior = pd.read_csv(BASE_DIR / "data" / "raw" / "behavior.csv")
+from src.config import DB_PATH
 
-conn = sqlite3.connect(DB_PATH)
 
-customers.to_sql("customers", conn, if_exists="replace", index=False)
-behavior.to_sql("behavior_events", conn, if_exists="replace", index=False)
+def load_to_sqlite(customers_df: pd.DataFrame, db_path: Path = DB_PATH) -> None:
+    db_path = Path(db_path)
+    db_path.parent.mkdir(parents=True, exist_ok=True)
+    with sqlite3.connect(db_path) as conn:
+        customers_df.to_sql("customers", conn, if_exists="replace", index=False)
+    print(f"[sqlite] Loaded {len(customers_df)} customers into {db_path}")
 
-conn.close()
 
-print("✅ Data loaded into SQLite successfully")
+if __name__ == "__main__":
+    from src.config import RAW_DATA_PATH
+    from src.economics import add_economic_fields
+    from src.ingest import clean_telco_data
+
+    raw = pd.read_csv(RAW_DATA_PATH)
+    load_to_sqlite(add_economic_fields(clean_telco_data(raw)))

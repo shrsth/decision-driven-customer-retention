@@ -1,4 +1,7 @@
+import numpy as np
 import pandas as pd
+
+from src.config import SAVE_RATE
 
 # --------------------------------------------------
 # Tier 2: Strategy-aware policy layer
@@ -51,15 +54,20 @@ def compute_revenue_at_risk(df):
     return df
 
 
-def compute_net_retention_value(df):
+def compute_net_retention_value(df, save_rate=SAVE_RATE):
+    """Expected value of intervening: an intervention only saves the
+    customer with probability `save_rate`, so at-risk revenue is
+    discounted accordingly before subtracting the cost."""
     df = df.copy()
-    df["net_retention_value"] = df["revenue_at_risk"] - df["retention_cost"]
+    df["net_retention_value"] = (
+        save_rate * df["revenue_at_risk"] - df["retention_cost"]
+    )
     return df
 
 
-def build_retention_scores(df):
+def build_retention_scores(df, save_rate=SAVE_RATE):
     df = compute_revenue_at_risk(df)
-    df = compute_net_retention_value(df)
+    df = compute_net_retention_value(df, save_rate)
 
     df["retention_priority_score"] = (
         df["net_retention_value"].clip(lower=0)
@@ -93,20 +101,23 @@ def select_customers_under_budget(
 
     df = df.sort_values(sort_col, ascending=False)
 
-    selected = []
-    spent = 0
+    # Greedy pack over numpy scalars (same skip-and-continue semantics as an
+    # iterrows loop, but ~10x faster — no per-row pandas Series overhead).
+    costs = df["retention_cost"].to_numpy()
+    cap = max_customers if max_customers else len(costs)
+    selected_pos = []
+    spent = 0.0
 
-    for _, row in df.iterrows():
-        if spent + row["retention_cost"] > total_budget:
+    for i in range(len(costs)):
+        cost = costs[i]
+        if spent + cost > total_budget:
             continue
-
-        selected.append(row)
-        spent += row["retention_cost"]
-
-        if max_customers and len(selected) >= max_customers:
+        selected_pos.append(i)
+        spent += cost
+        if len(selected_pos) >= cap:
             break
 
-    selected_df = pd.DataFrame(selected)
+    selected_df = df.iloc[selected_pos]
     return selected_df, spent
 
 
@@ -117,13 +128,94 @@ def assign_action_segments(full_df, selected_df):
     df = full_df.copy()
     selected_ids = set(selected_df["customer_id"])
 
-    def segment(row):
-        if row["customer_id"] in selected_ids:
-            return "ACT"
-        elif row["net_retention_value"] > 0:
-            return "MONITOR"
-        else:
-            return "IGNORE"
-
-    df["action_segment"] = df.apply(segment, axis=1)
+    df["action_segment"] = np.where(
+        df["customer_id"].isin(selected_ids), "ACT",
+        np.where(df["net_retention_value"] > 0, "MONITOR", "IGNORE"),
+    )
     return df
+
+
+# --------------------------------------------------
+# Baseline policy comparison — does the economic engine beat naive targeting?
+# --------------------------------------------------
+def _greedy_pack(ordered_df, budget, max_customers):
+    """Fill the budget in the given order (skip-and-continue greedy)."""
+    costs = ordered_df["retention_cost"].to_numpy()
+    cap = max_customers if max_customers else len(costs)
+    selected, spent = [], 0.0
+    for i in range(len(costs)):
+        if spent + costs[i] > budget:
+            continue
+        selected.append(i)
+        spent += costs[i]
+        if len(selected) >= cap:
+            break
+    return ordered_df.iloc[selected]
+
+
+def compare_policies(
+    scored_df, budget, max_customers, save_rate=SAVE_RATE, random_state=42
+):
+    """Compare the economic decision engine against naive targeting policies
+    under the same budget and capacity.
+
+    Naive policies spend on whoever ranks top by their single criterion, even
+    if the intervention loses money; the engine only spends where expected
+    value is positive and ranks by that value. Value captured per policy is
+    the sum of net_retention_value (save_rate * p * CLV - cost) over the
+    customers it funds.
+    """
+    df = build_retention_scores(scored_df, save_rate)
+    df = df[df["retention_cost"] > 0].copy()
+    rng = np.random.default_rng(random_state)
+    df["_rand"] = rng.random(len(df))
+
+    engine = df[df["net_retention_value"] > 0]
+    policies = {
+        "Random": df.sort_values("_rand"),
+        "Target highest churn": df.sort_values("churn_probability", ascending=False),
+        "Target highest CLV": df.sort_values("CLV", ascending=False),
+        "Decision engine": engine.sort_values("net_retention_value", ascending=False),
+    }
+
+    rows = []
+    for name, ordered in policies.items():
+        chosen = _greedy_pack(ordered, budget, max_customers)
+        cost = float(chosen["retention_cost"].sum())
+        value = float(chosen["net_retention_value"].sum())
+        rows.append({
+            "policy": name,
+            "customers": len(chosen),
+            "budget_used": cost,
+            "expected_value": value,
+            "roi": value / cost if cost else 0.0,
+        })
+    return pd.DataFrame(rows)
+
+
+# --------------------------------------------------
+# Assumption sensitivity — how fragile is the business case?
+# --------------------------------------------------
+def save_rate_sensitivity(act_df, assumed_save_rate=SAVE_RATE):
+    """How the funded action set's economics respond to the true save rate.
+
+    The engine commits to an ACT set assuming `assumed_save_rate`. If offers
+    actually succeed at rate r, realized net value is
+    r * sum(p * CLV) - sum(cost). The break-even rate is the r at which that
+    hits zero — below it, the whole program loses money.
+    """
+    revenue_at_risk = float((act_df["churn_probability"] * act_df["CLV"]).sum())
+    cost = float(act_df["retention_cost"].sum())
+    break_even = cost / revenue_at_risk if revenue_at_risk else float("nan")
+
+    rates = [round(0.05 * i, 2) for i in range(0, 21)]  # 0.00 .. 1.00
+    net_values = [r * revenue_at_risk - cost for r in rates]
+
+    return {
+        "break_even": break_even,
+        "assumed": assumed_save_rate,
+        "rates": rates,
+        "net_values": net_values,
+        "revenue_at_risk": revenue_at_risk,
+        "cost": cost,
+    }
