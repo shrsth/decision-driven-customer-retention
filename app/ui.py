@@ -74,7 +74,9 @@ _CSS = f"""
    toolbar, so display:none on stToolbar would make the sidebar unreopenable. */
 #MainMenu, footer {{ visibility: hidden; }}
 [data-testid="stToolbarActions"] {{ display: none; }}
-.block-container {{ padding-top: 2.2rem; max-width: 1320px; }}
+/* Clear Streamlit's ~60px top header bar so the title isn't clipped, without
+   the large empty band the injector gaps used to add. */
+.block-container {{ padding-top: 4.5rem; max-width: 1320px; }}
 
 /* Collapse the injected-CSS element container so it doesn't add a flex gap
    above the header. A <style> still applies while its container is hidden. */
