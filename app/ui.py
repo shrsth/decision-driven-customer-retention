@@ -71,6 +71,17 @@ _CSS = f"""
 [data-testid="stToolbar"] {{ display: none; }}
 .block-container {{ padding-top: 2.2rem; max-width: 1320px; }}
 
+/* Keep the "expand sidebar" control visible and above the banner, so a
+   collapsed sidebar can always be reopened. */
+[data-testid="stSidebarCollapsedControl"],
+[data-testid="collapsedControl"] {{
+    z-index: 1000000 !important;
+    visibility: visible !important;
+    display: flex !important;
+}}
+[data-testid="stSidebarCollapsedControl"] svg,
+[data-testid="collapsedControl"] svg {{ color: var(--text-primary); }}
+
 /* Metric cards — translucent glass */
 [data-testid="stMetric"] {{
     background: var(--bg-surface);
