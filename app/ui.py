@@ -61,9 +61,9 @@ _CSS = f"""
     --radius-lg: 14px;
 }}
 
-/* Light scrim over the LightRays background canvas (injected behind .stApp at
-   z-index -1): keeps text readable while letting the rays show with character. */
-.stApp {{ background: rgba(11, 12, 15, 0.38); font-family: 'Inter', system-ui, sans-serif; }}
+/* Scrim over the Ferrofluid background canvas (injected behind .stApp at
+   z-index -1): keeps text readable while letting the fluid show with character. */
+.stApp {{ background: rgba(11, 12, 15, 0.46); font-family: 'Inter', system-ui, sans-serif; }}
 [data-testid="stAppViewContainer"], [data-testid="stMain"] {{ background: transparent; }}
 /* Set the body font on the app root only — never on `span`, or it clobbers
    Streamlit's Material icon font (the sidebar-collapse arrow etc.). */
