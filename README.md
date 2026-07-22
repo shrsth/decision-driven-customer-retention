@@ -1,8 +1,12 @@
 # Decision-Driven Customer Retention System
 
+### 🔗 [Live Demo](https://decision-driven-customer-retention.streamlit.app/) &nbsp;·&nbsp; [Source](https://github.com/shrsth/decision-driven-customer-retention)
+
 A **decision-first customer retention system** that converts churn predictions into **economically justified actions** under **budget and operational constraints**, and validates those decisions before deployment.
 
 > **Key idea:** Models do not create value. Decisions do.
+
+> The live demo may take ~30s to wake on first load (free tier sleeps when idle) and then bootstraps its data and model.
 
 ---
 
