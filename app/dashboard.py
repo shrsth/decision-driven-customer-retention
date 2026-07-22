@@ -36,7 +36,7 @@ st.set_page_config(
     layout="wide",
 )
 inject_css()
-render_background()
+render_background(opacity=0.5, glow=0.85, speed=0.2)
 
 
 @st.cache_resource(show_spinner="First run: downloading data and training model…")

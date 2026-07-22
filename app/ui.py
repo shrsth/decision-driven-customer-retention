@@ -61,9 +61,9 @@ _CSS = f"""
     --radius-lg: 14px;
 }}
 
-/* Semi-transparent scrim over the Ferrofluid background canvas (injected behind
-   .stApp at z-index -1): the fluid stays visible but dimmed for readability. */
-.stApp {{ background: rgba(13, 13, 13, 0.55); font-family: 'Inter', system-ui, sans-serif; }}
+/* Heavy scrim over the Ferrofluid background canvas (injected behind .stApp at
+   z-index -1): the fluid reads only as a faint ambient texture, not swirls. */
+.stApp {{ background: rgba(12, 12, 14, 0.86); font-family: 'Inter', system-ui, sans-serif; }}
 [data-testid="stAppViewContainer"], [data-testid="stMain"] {{ background: transparent; }}
 /* Set the body font on the app root only — never on `span`, or it clobbers
    Streamlit's Material icon font (the sidebar-collapse arrow etc.). */
@@ -114,6 +114,28 @@ _CSS = f"""
     font-size: 1.7rem;
     font-weight: 700;
     font-variant-numeric: tabular-nums;
+}}
+
+/* App header — clean, restrained typography (no effects) */
+.app-hero {{
+    padding: 0.2rem 0 1.25rem;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 1.6rem;
+}}
+.app-hero__title {{
+    font-family: 'Space Grotesk', 'Inter', sans-serif;
+    font-size: clamp(1.7rem, 2.7vw, 2.3rem);
+    font-weight: 700;
+    letter-spacing: -0.6px;
+    line-height: 1.14;
+    color: var(--text-primary);
+}}
+.app-hero__sub {{
+    font-family: 'Inter', sans-serif;
+    font-size: 1.0rem;
+    font-weight: 400;
+    color: var(--text-secondary);
+    margin-top: 0.45rem;
 }}
 
 /* Tabs */
