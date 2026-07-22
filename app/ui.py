@@ -74,9 +74,14 @@ _CSS = f"""
    toolbar, so display:none on stToolbar would make the sidebar unreopenable. */
 #MainMenu, footer {{ visibility: hidden; }}
 [data-testid="stToolbarActions"] {{ display: none; }}
-/* Clear Streamlit's ~60px top header bar so the title isn't clipped, without
-   the large empty band the injector gaps used to add. */
-.block-container {{ padding-top: 4.5rem; max-width: 1320px; }}
+/* Slim Streamlit's top header bar and tuck the content just beneath it, so the
+   title isn't clipped but there's no large empty band above it. */
+[data-testid="stHeader"] {{
+    height: 2.5rem !important;
+    min-height: 2.5rem !important;
+    background: transparent !important;
+}}
+.block-container {{ padding-top: 2.75rem; max-width: 1320px; }}
 
 /* Collapse the injected-CSS element container so it doesn't add a flex gap
    above the header. A <style> still applies while its container is hidden. */
@@ -176,6 +181,50 @@ button[data-baseweb="tab"][aria-selected="true"] {{ color: var(--accent); }}
 [data-testid="stSliderTickBarMin"], [data-testid="stSliderTickBarMax"] {{
     color: var(--text-muted) !important;
     font-size: 0.66rem !important;
+}}
+
+/* --- Motion & smoothness --- */
+html, [data-testid="stAppViewContainer"], section[data-testid="stMain"] {{
+    scroll-behavior: smooth;
+}}
+
+/* Refined scrollbar */
+::-webkit-scrollbar {{ width: 10px; height: 10px; }}
+::-webkit-scrollbar-track {{ background: transparent; }}
+::-webkit-scrollbar-thumb {{
+    background: rgba(255,255,255,0.12);
+    border-radius: 999px;
+    border: 2px solid transparent;
+    background-clip: content-box;
+    transition: background 0.2s ease;
+}}
+::-webkit-scrollbar-thumb:hover {{
+    background: rgba(57,135,229,0.55); background-clip: content-box;
+}}
+
+/* Gentle one-time entrance — applied to roots that persist across reruns, so it
+   plays on load and does NOT re-flash when a slider triggers a rerun. */
+@keyframes appIn {{ from {{ opacity: 0; transform: translateY(8px); }} to {{ opacity: 1; transform: none; }} }}
+@keyframes sideIn {{ from {{ opacity: 0; transform: translateX(-12px); }} to {{ opacity: 1; transform: none; }} }}
+.stApp {{ animation: appIn 0.55s cubic-bezier(0.22, 1, 0.36, 1); }}
+[data-testid="stSidebar"] {{ animation: sideIn 0.5s cubic-bezier(0.22, 1, 0.36, 1); }}
+
+/* Metric cards: smooth hover lift + accent ring */
+[data-testid="stMetric"] {{
+    transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
+}}
+[data-testid="stMetric"]:hover {{
+    transform: translateY(-3px);
+    border-color: rgba(57,135,229,0.35);
+    box-shadow: 0 24px 46px -14px rgba(0,0,0,0.62), 0 0 0 1px rgba(57,135,229,0.2);
+}}
+
+/* Smooth transitions on interactive controls */
+button[data-baseweb="tab"],
+[data-baseweb="select"] > div,
+[data-testid="stSidebar"] input,
+[data-testid="stDownloadButton"] button {{
+    transition: all 0.2s ease !important;
 }}
 
 /* Section headers */
