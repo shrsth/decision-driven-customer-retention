@@ -14,7 +14,20 @@ While a churn model estimates the probability that a customer may leave, busines
 
 ---
 
-## 2. Why Churn Prediction Alone Is Insufficient
+## 2. Data Foundation
+
+The system runs on the IBM Telco Customer Churn dataset: 7,043 real telecom
+customers with a real churn label (26.5% churn rate). Churn probability is
+learned from contract, tenure, services, and billing attributes.
+
+The dataset does not include lifetime value or intervention cost, so CLV and
+retention cost are derived per customer from contract, tenure, and monthly
+charges under documented assumptions (see economic_assumptions.md). These
+derivations are centralized and replaceable without touching decision logic.
+
+---
+
+## 3. Why Churn Prediction Alone Is Insufficient
 
 A churn probability answers only one question:
 
@@ -33,14 +46,18 @@ Therefore, churn probability is treated as a signal — not a decision rule.
 
 ---
 
-## 3. Decision Framework Used
+## 4. Decision Framework Used
 
 The system follows a decision-first architecture:
 
 1. Predict churn probability using Logistic Regression
 2. Estimate economic impact:
    - Revenue at risk = churn_probability × CLV
-   - Net retention value = revenue at risk − retention cost
+   - Net retention value = save_rate × revenue at risk − retention cost
+
+   Interventions are not guaranteed to succeed, so at-risk revenue is
+   discounted by a save rate (default 30%) before costs are subtracted.
+   Assuming every intervention works would inflate ROI roughly threefold.
 3. Prioritize customers based on economic efficiency
 4. Apply business strategy (Conservative / Balanced / Aggressive)
 5. Enforce real-world constraints:
@@ -53,7 +70,7 @@ Only customers with positive net retention value are eligible for action.
 
 ---
 
-## 4. Why Economic Efficiency Drives Decisions
+## 5. Why Economic Efficiency Drives Decisions
 
 Customers are ranked using economic efficiency rather than raw churn probability:
 
@@ -68,7 +85,7 @@ This mirrors how real retention teams operate under finite resources.
 
 ---
 
-## 5. Risk Bands Are Operational, Not Statistical
+## 6. Risk Bands Are Operational, Not Statistical
 
 Risk bands (LOW / MEDIUM / HIGH) are used to:
 - Simplify decision logic
@@ -81,7 +98,7 @@ Risk bands represent operational urgency, not model certainty.
 
 ---
 
-## 6. Why a Greedy, Constraint-Aware Selector Is Used
+## 7. Why a Greedy, Constraint-Aware Selector Is Used
 
 Customer selection is performed using a greedy, monotonic algorithm under budget and capacity constraints.
 
@@ -95,7 +112,7 @@ While more complex optimization techniques exist, this design prioritizes clarit
 
 ---
 
-## 7. Decision Stability as a Deployment Requirement
+## 8. Decision Stability as a Deployment Requirement
 
 A deployable decision system must behave consistently under small operational changes.
 
@@ -112,7 +129,7 @@ Instability is treated as a design flaw, not an acceptable outcome.
 
 ---
 
-## 8. Tiered Architecture Rationale
+## 9. Tiered Architecture Rationale
 
 The system is intentionally split into tiers:
 
@@ -129,7 +146,39 @@ This separation ensures the decision logic can be deployed independently of the 
 
 ---
 
-## 9. Key Design Principle
+## 10. Known Limitation: Persuadability (Uplift)
+
+The engine ranks customers by `save_rate × p(churn) × CLV − cost`. This has a
+subtle flaw worth stating plainly, because a careful reviewer will raise it:
+**it does not distinguish customers who can be *persuaded* to stay from those
+who will churn no matter what.**
+
+A customer with churn probability near 1.0 is top-ranked here — yet if that
+customer has already decided to leave, the retention offer is wasted money.
+Conversely, a customer who would have stayed anyway yields no incremental
+value even if "saved." The quantity that actually matters is the **uplift** (or
+treatment effect): the *change* in retention probability caused by the
+intervention, not the retention probability itself. The truly persuadable
+customers sit in the middle, not at the extremes.
+
+**Why it isn't implemented here:** uplift modeling requires experimental data —
+a treatment group that received offers and a control group that did not — so
+the incremental effect can be estimated. The IBM Telco dataset has no such
+treatment/outcome record, so any uplift curve would be invented, which would
+undermine the honesty the rest of this system is built on (see the baseline
+comparison and break-even analysis).
+
+**The honest path forward:** run a randomized retention campaign, log who was
+offered what and who stayed, then fit an uplift model (e.g., a two-model or
+transformed-outcome learner) and rank by predicted uplift × CLV instead of
+`p(churn) × CLV`. The decision engine's architecture already supports this —
+only the scoring column would change. Until that experimental data exists, the
+current `save_rate` is a deliberately simple, transparent stand-in, and the
+sensitivity analysis quantifies exactly how much the conclusions depend on it.
+
+---
+
+## 11. Key Design Principle
 
 Models do not create value. Decisions do.
 
@@ -137,7 +186,7 @@ This project demonstrates how machine learning becomes valuable only when embedd
 
 ---
 
-## 10. Final Takeaway
+## 12. Final Takeaway
 
 This is not a churn prediction dashboard.
 

@@ -21,6 +21,24 @@ It is a **decision-driven retention system** that:
 
 ---
 
+## 📦 Dataset
+
+The system runs on the **IBM Telco Customer Churn** dataset — 7,043 real
+telecom customers with a real churn label (26.5% churn rate), contract terms,
+tenure, services, and monthly charges. The pipeline downloads it automatically
+on first run (and caches it locally) from:
+
+```
+https://raw.githubusercontent.com/IBM/telco-customer-churn-on-icp4d/master/data/Telco-Customer-Churn.csv
+```
+
+The dataset has no lifetime value or intervention cost, so **CLV and
+retention cost are derived per customer** from contract, tenure, and monthly
+charges. The formulas and their rationale are documented in
+[docs/economic_assumptions.md](docs/economic_assumptions.md).
+
+---
+
 ## 🧠 Why This Matters
 
 Most churn projects stop at:
@@ -49,15 +67,23 @@ analysis.py – Tier 2/3 analytical layer responsible for strategy comparison, r
 
 dashboard.py – Streamlit-based user interface used only for simulation, visualization, and communication of decisions.
 
-Source Layer
+Source Layer (src/)
 
-features/ – Behavioral feature engineering built from raw customer and interaction data.
+pipeline.py – Single entrypoint: download → clean → economics → SQLite → train → save model.
 
-models/ – Logistic regression churn model used strictly as a risk signal.
+ingest.py – Dataset download (cached) and cleaning.
+
+economics.py – Per-customer CLV and retention-cost derivation.
+
+load_to_sqlite.py / sql_feature_queries.py – SQLite persistence and in-database churn summaries.
+
+features/ – Feature table construction from the SQLite customers table.
+
+models/ – Logistic regression churn model (trained by the pipeline, serialized with joblib, used strictly as a risk signal).
 
 decision/ – Strategy logic and budget/capacity-constrained customer selection policies.
 
-tests/ – Unit tests validating feature pipelines and decision correctness.
+tests/ (repo root) – pytest suite validating ingestion, economics, features, decisions, and the model artifact.
 
 
 ### Why tier separation matters
@@ -74,7 +100,8 @@ tests/ – Unit tests validating feature pipelines and decision correctness.
 
 2. **Economic modeling**
    - Revenue at risk = churn_probability × CLV
-   - Net retention value = revenue at risk − retention cost
+   - Net retention value = save_rate × revenue at risk − retention cost
+   - (save_rate = probability the intervention actually works, default 30%)
 
 3. **Prioritization**
    Customers are ranked by economic efficiency:
@@ -136,5 +163,19 @@ It exists to:
 ## ▶️ How to Run
 
 ```bash
+# 1. Install dependencies
 pip install -r requirements.txt
+
+# 2. Run the data pipeline (downloads the dataset on first run,
+#    loads SQLite, trains and saves the churn model)
+python -m src.pipeline
+
+# 3. Run the tests (offline, no network needed)
+python -m pytest tests -q
+
+# 4. Launch the dashboard
 python -m streamlit run app/dashboard.py
+```
+
+Note: after re-running the pipeline, restart Streamlit (or clear its cache)
+so the dashboard picks up the new data and model.
