@@ -1,24 +1,99 @@
 import pandas as pd
 import streamlit as st
 
-from app.core import load_and_compute_decisions
+from app.core import decide, score_customers
+from src.config import SAVE_RATE
+from src.decision.retention_strategy import compare_policies, save_rate_sensitivity
+
+STRATEGIES = ["Conservative", "Balanced", "Aggressive"]
+
 
 # --------------------------------------------------
-# Tier 2: Strategy comparison (CACHED)
+# The expensive part (SQL read + model prediction) runs ONCE per session
+# and is reused by every decision computation below.
+# --------------------------------------------------
+@st.cache_resource(show_spinner=False)
+def get_scored_customers():
+    return score_customers()
+
+
+# --------------------------------------------------
+# One cached decision run per (constraints, strategy, save_rate).
+# Every Tier 1/2/3 view reuses these — the decide() step is cheap.
 # --------------------------------------------------
 @st.cache_data(show_spinner=False)
+def compute_decision_result(
+    budget: float,
+    max_customers: int,
+    strategy: str,
+    save_rate: float = SAVE_RATE
+):
+    return decide(get_scored_customers(), budget, max_customers, strategy, save_rate)
+
+
+def compute_decisions_cached(
+    budget: float,
+    max_customers: int,
+    strategy: str,
+    save_rate: float = SAVE_RATE
+):
+    final_df, _, _, _ = compute_decision_result(
+        budget, max_customers, strategy, save_rate
+    )
+    return final_df
+
+
+def compute_roi_sensitivity(budget, max_customers, strategy, save_rate=SAVE_RATE):
+    """ROI across a sweep of save rates — the business case's sensitivity."""
+    rates = [round(0.1 * i, 2) for i in range(1, 11)]
+    rois = []
+    for rate in rates:
+        df = compute_decisions_cached(budget, max_customers, strategy, rate)
+        act = df[df["action_segment"] == "ACT"]
+        rois.append(
+            act["net_retention_value"].sum() / max(act["retention_cost"].sum(), 1)
+        )
+    return rates, rois
+
+
+@st.cache_data(show_spinner=False)
+def compute_policy_comparison(budget, max_customers, save_rate=SAVE_RATE):
+    """Economic engine vs. naive targeting baselines (same budget)."""
+    return compare_policies(
+        get_scored_customers(), budget, max_customers, save_rate
+    )
+
+
+def compute_sensitivity(budget, max_customers, strategy, save_rate=SAVE_RATE):
+    """Break-even and net-value curve for the current ACT set."""
+    final_df = compute_decisions_cached(budget, max_customers, strategy, save_rate)
+    act = final_df[final_df["action_segment"] == "ACT"]
+    return save_rate_sensitivity(act, save_rate)
+
+
+def _act_sets(budget, max_customers, save_rate):
+    return {
+        strat: set(
+            compute_decisions_cached(budget, max_customers, strat, save_rate)
+            .query("action_segment == 'ACT'")["customer_id"]
+        )
+        for strat in STRATEGIES
+    }
+
+
+# --------------------------------------------------
+# Tier 2: Strategy comparison
+# --------------------------------------------------
 def compute_strategy_comparison(
     budget: float,
-    max_customers: int
+    max_customers: int,
+    save_rate: float = SAVE_RATE
 ):
-    strategies = ["Conservative", "Balanced", "Aggressive"]
     results = []
 
-    for strat in strategies:
-        final_df, _, _, _ = load_and_compute_decisions(
-            budget=budget,
-            max_customers=max_customers,
-            strategy=strat
+    for strat in STRATEGIES:
+        final_df = compute_decisions_cached(
+            budget, max_customers, strat, save_rate
         )
 
         act_df = final_df[final_df["action_segment"] == "ACT"]
@@ -28,8 +103,8 @@ def compute_strategy_comparison(
             "ACT Customers": len(act_df),
             "% HIGH Risk": (act_df["risk_band"] == "HIGH").mean() * 100,
             "% MEDIUM Risk": (act_df["risk_band"] == "MEDIUM").mean() * 100,
-            "Revenue Saved (₹)": act_df["net_retention_value"].sum(),
-            "Budget Used (₹)": act_df["retention_cost"].sum(),
+            "Revenue Saved ($)": act_df["net_retention_value"].sum(),
+            "Budget Used ($)": act_df["retention_cost"].sum(),
             "ROI": (
                 act_df["net_retention_value"].sum()
                 / max(act_df["retention_cost"].sum(), 1)
@@ -40,29 +115,14 @@ def compute_strategy_comparison(
 
 
 # --------------------------------------------------
-# Tier 3: Counterfactual strategy impact (CACHED)
+# Tier 3: Counterfactual strategy impact
 # --------------------------------------------------
-@st.cache_data(show_spinner=False)
 def compute_counterfactual_impact(
     budget: float,
-    max_customers: int
+    max_customers: int,
+    save_rate: float = SAVE_RATE
 ):
-    strategies = ["Conservative", "Balanced", "Aggressive"]
-    act_sets = {}
-
-    for strat in strategies:
-        final_df, _, _, _ = load_and_compute_decisions(
-            budget=budget,
-            max_customers=max_customers,
-            strategy=strat
-        )
-
-        act_sets[strat] = set(
-            final_df.loc[
-                final_df["action_segment"] == "ACT",
-                "customer_id"
-            ]
-        )
+    act_sets = _act_sets(budget, max_customers, save_rate)
 
     conservative = act_sets["Conservative"]
     balanced = act_sets["Balanced"]
@@ -76,38 +136,21 @@ def compute_counterfactual_impact(
 
 
 # --------------------------------------------------
-# Tier 3: Decision Boundary Zone (CACHED)
+# Tier 3: Decision Boundary Zone
 # --------------------------------------------------
-@st.cache_data(show_spinner=False)
 def compute_decision_boundary_zone(
     budget: float,
-    max_customers: int
+    max_customers: int,
+    save_rate: float = SAVE_RATE
 ):
-    strategies = ["Conservative", "Balanced", "Aggressive"]
-    act_sets = {}
-
-    for strat in strategies:
-        final_df, _, _, _ = load_and_compute_decisions(
-            budget=budget,
-            max_customers=max_customers,
-            strategy=strat
-        )
-
-        act_sets[strat] = set(
-            final_df.loc[
-                final_df["action_segment"] == "ACT",
-                "customer_id"
-            ]
-        )
+    act_sets = _act_sets(budget, max_customers, save_rate)
 
     union_act = set.union(*act_sets.values())
     intersection_act = set.intersection(*act_sets.values())
     dbz_ids = union_act - intersection_act
 
-    balanced_df, _, _, _ = load_and_compute_decisions(
-        budget=budget,
-        max_customers=max_customers,
-        strategy="Balanced"
+    balanced_df = compute_decisions_cached(
+        budget, max_customers, "Balanced", save_rate
     )
 
     dbz_df = balanced_df[
@@ -127,28 +170,24 @@ def compute_decision_boundary_zone(
 
 
 # --------------------------------------------------
-# Tier 3: Decision Stability (CACHED)
+# Tier 3: Decision Stability
 # --------------------------------------------------
-@st.cache_data(show_spinner=False)
 def compute_decision_stability(
     budget: float,
     max_customers: int,
-    strategy: str
+    strategy: str,
+    save_rate: float = SAVE_RATE
 ):
     """
     Measures how stable ACT decisions are under
     small budget and capacity perturbations.
     """
 
-    base_df, _, _, _ = load_and_compute_decisions(
-        budget=budget,
-        max_customers=max_customers,
-        strategy=strategy
-    )
+    def act_ids(b, m):
+        df = compute_decisions_cached(b, m, strategy, save_rate)
+        return set(df[df["action_segment"] == "ACT"]["customer_id"])
 
-    base_act = set(
-        base_df[base_df["action_segment"] == "ACT"]["customer_id"]
-    )
+    base_act = act_ids(budget, max_customers)
 
     if len(base_act) == 0:
         return {
@@ -157,27 +196,8 @@ def compute_decision_stability(
             "note": "No ACT customers under current constraints"
         }
 
-    # Budget -10%
-    budget_df, _, _, _ = load_and_compute_decisions(
-        budget=budget * 0.9,
-        max_customers=max_customers,
-        strategy=strategy
-    )
-
-    budget_act = set(
-        budget_df[budget_df["action_segment"] == "ACT"]["customer_id"]
-    )
-
-    # Capacity -10%
-    capacity_df, _, _, _ = load_and_compute_decisions(
-        budget=budget,
-        max_customers=int(max_customers * 0.9),
-        strategy=strategy
-    )
-
-    capacity_act = set(
-        capacity_df[capacity_df["action_segment"] == "ACT"]["customer_id"]
-    )
+    budget_act = act_ids(budget * 0.9, max_customers)
+    capacity_act = act_ids(budget, int(max_customers * 0.9))
 
     return {
         "budget_stability": len(base_act & budget_act) / len(base_act),
@@ -186,28 +206,23 @@ def compute_decision_stability(
 
 
 # --------------------------------------------------
-# Tier 3: Stability Attribution (CACHED)
+# Tier 3: Stability Attribution
 # --------------------------------------------------
-@st.cache_data(show_spinner=False)
 def compute_stability_attribution(
     budget: float,
     max_customers: int,
-    strategy: str
+    strategy: str,
+    save_rate: float = SAVE_RATE
 ):
     """
     Explains why some customers drop out when constraints tighten.
     """
 
-    base_df, _, _, _ = load_and_compute_decisions(
-        budget=budget,
-        max_customers=max_customers,
-        strategy=strategy
+    base_df = compute_decisions_cached(
+        budget, max_customers, strategy, save_rate
     )
-
-    reduced_df, _, _, _ = load_and_compute_decisions(
-        budget=budget * 0.9,
-        max_customers=max_customers,
-        strategy=strategy
+    reduced_df = compute_decisions_cached(
+        budget * 0.9, max_customers, strategy, save_rate
     )
 
     base_act = base_df[base_df["action_segment"] == "ACT"]
