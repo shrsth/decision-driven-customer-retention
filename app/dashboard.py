@@ -21,7 +21,7 @@ from app.analysis import (  # noqa: E402
     compute_sensitivity,
 )
 from app import charts
-from app.darkveil import render_banner
+from app.hero import render_hero
 from app.ferrofluid import render_background
 from app.ui import inject_css, section_header, sidebar_title
 from src.config import DB_PATH, METRICS_PATH, MODEL_PATH
@@ -61,9 +61,9 @@ def load_metrics():
 
 
 # --------------------------------------------------
-# Hero banner (DarkVeil animated WebGL)
+# Hero title card (MagicBento-style interactive glow)
 # --------------------------------------------------
-render_banner()
+render_hero()
 
 # --------------------------------------------------
 # Sidebar controls
