@@ -61,9 +61,12 @@ _CSS = f"""
     --radius-lg: 14px;
 }}
 
+/* Semi-transparent scrim over the Ferrofluid background canvas (injected behind
+   .stApp at z-index -1): the fluid stays visible but dimmed for readability. */
+.stApp {{ background: rgba(13, 13, 13, 0.55); font-family: 'Inter', system-ui, sans-serif; }}
+[data-testid="stAppViewContainer"], [data-testid="stMain"] {{ background: transparent; }}
 /* Set the body font on the app root only — never on `span`, or it clobbers
    Streamlit's Material icon font (the sidebar-collapse arrow etc.). */
-.stApp {{ background: var(--bg-base); font-family: 'Inter', system-ui, sans-serif; }}
 .stApp p, .stApp label, .block-container {{ font-family: 'Inter', system-ui, sans-serif; }}
 
 /* Trim Streamlit chrome. Hide only the toolbar *actions* (Deploy / hamburger),
