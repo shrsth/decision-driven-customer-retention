@@ -22,7 +22,7 @@ from app.analysis import (  # noqa: E402
 )
 from app import charts
 from app.hero import render_hero
-from app.ferrofluid import render_background
+from app.lightrays import render_lightrays
 from app.ui import inject_css, section_header, sidebar_title
 from src.config import DB_PATH, METRICS_PATH, MODEL_PATH
 
@@ -36,7 +36,7 @@ st.set_page_config(
     layout="wide",
 )
 inject_css()
-render_background(opacity=0.5, glow=0.85, speed=0.2)
+render_lightrays()
 
 
 @st.cache_resource(show_spinner="First run: downloading data and training model…")
