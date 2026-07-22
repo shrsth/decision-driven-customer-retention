@@ -66,21 +66,27 @@ _CSS = f"""
 .stApp {{ background: var(--bg-base); font-family: 'Inter', system-ui, sans-serif; }}
 .stApp p, .stApp label, .block-container {{ font-family: 'Inter', system-ui, sans-serif; }}
 
-/* Trim Streamlit chrome */
+/* Trim Streamlit chrome. Hide only the toolbar *actions* (Deploy / hamburger),
+   not the whole toolbar — the collapsed-sidebar expand button lives inside the
+   toolbar, so display:none on stToolbar would make the sidebar unreopenable. */
 #MainMenu, footer {{ visibility: hidden; }}
-[data-testid="stToolbar"] {{ display: none; }}
+[data-testid="stToolbarActions"] {{ display: none; }}
 .block-container {{ padding-top: 2.2rem; max-width: 1320px; }}
 
-/* Keep the "expand sidebar" control visible and above the banner, so a
-   collapsed sidebar can always be reopened. */
-[data-testid="stSidebarCollapsedControl"],
-[data-testid="collapsedControl"] {{
-    z-index: 1000000 !important;
+/* Keep the "expand sidebar" button (shown when the sidebar is collapsed)
+   visible, sized, and clickable above the banner. Streamlit 1.53 renders it
+   as stExpandSidebarButton and can collapse it to zero width. */
+[data-testid="stExpandSidebarButton"] {{
+    display: inline-flex !important;
     visibility: visible !important;
-    display: flex !important;
+    opacity: 1 !important;
+    width: auto !important;
+    min-width: 2.25rem !important;
+    height: 2.25rem !important;
+    z-index: 1000000 !important;
+    pointer-events: auto !important;
 }}
-[data-testid="stSidebarCollapsedControl"] svg,
-[data-testid="collapsedControl"] svg {{ color: var(--text-primary); }}
+[data-testid="stExpandSidebarButton"] svg {{ color: var(--text-primary) !important; }}
 
 /* Metric cards — translucent glass */
 [data-testid="stMetric"] {{
