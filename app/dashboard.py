@@ -1,9 +1,16 @@
 import json
+import sys
+from pathlib import Path
 
-import pandas as pd
-import streamlit as st
+# Make the repo root importable. Streamlit Cloud launches this as
+# `streamlit run app/dashboard.py`, which puts only app/ on sys.path — not the
+# project root — so the absolute `app.*` / `src.*` imports below would fail.
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from app.analysis import (
+import pandas as pd  # noqa: E402
+import streamlit as st  # noqa: E402
+
+from app.analysis import (  # noqa: E402
     compute_decision_result,
     compute_strategy_comparison,
     compute_decision_stability,
