@@ -176,8 +176,12 @@ def _prep_colors(colors):
 _SETUP_JS = r"""
 const host = document.createElement('div');
 host.id = 'ff-bg-host';
-host.style.cssText = 'position:fixed;inset:0;z-index:-1;pointer-events:none;overflow:hidden;background:' + cfg.bg + ';';
-document.body.appendChild(host);
+// z-index 0 as the FIRST child of body (not -1 appended last): content still
+// paints above it, but negative-z-index layers are excluded from an element's
+// backdrop, which would stop the sidebar's frosted backdrop-filter from
+// picking the fluid up.
+host.style.cssText = 'position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden;background:' + cfg.bg + ';';
+document.body.insertBefore(host, document.body.firstChild);
 
 const renderer = new Renderer({ dpr: Math.min(window.devicePixelRatio || 1, cfg.dprCap), alpha: true, antialias: true });
 const gl = renderer.gl;

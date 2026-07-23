@@ -205,9 +205,11 @@ html, [data-testid="stAppViewContainer"], section[data-testid="stMain"] {{
 /* Gentle one-time entrance — applied to roots that persist across reruns, so it
    plays on load and does NOT re-flash when a slider triggers a rerun. */
 @keyframes appIn {{ from {{ opacity: 0; transform: translateY(8px); }} to {{ opacity: 1; transform: none; }} }}
-@keyframes sideIn {{ from {{ opacity: 0; transform: translateX(-12px); }} to {{ opacity: 1; transform: none; }} }}
+/* Opacity-only fade for the sidebar — a transform here would disable its
+   backdrop-filter (frosted glass) while the animation runs. */
+@keyframes sideIn {{ from {{ opacity: 0; }} to {{ opacity: 1; }} }}
 .stApp {{ animation: appIn 0.55s cubic-bezier(0.22, 1, 0.36, 1); }}
-[data-testid="stSidebar"] {{ animation: sideIn 0.5s cubic-bezier(0.22, 1, 0.36, 1); }}
+[data-testid="stSidebar"] {{ animation: sideIn 0.6s ease; }}
 
 /* Metric cards: smooth hover lift + accent ring */
 [data-testid="stMetric"] {{
@@ -239,8 +241,21 @@ button[data-baseweb="tab"],
     margin-top: 5px; padding-left: 27px; max-width: 820px; line-height: 1.45;
 }}
 
-/* Sidebar */
-[data-testid="stSidebar"] {{ background: #121317; border-right: 1px solid var(--border); }}
+/* Sidebar — frosted glass: translucent + backdrop blur so the animated
+   background drifts softly behind it. Inner wrappers must stay transparent
+   or they'd paint over the effect. */
+[data-testid="stSidebar"] {{
+    background:
+        linear-gradient(180deg, rgba(255,255,255,0.055), rgba(255,255,255,0.015)),
+        rgba(14, 15, 20, 0.38) !important;
+    backdrop-filter: blur(26px) saturate(1.5);
+    -webkit-backdrop-filter: blur(26px) saturate(1.5);
+    border-right: 1px solid rgba(255, 255, 255, 0.10);
+    box-shadow: 1px 0 28px rgba(0, 0, 0, 0.38);
+}}
+[data-testid="stSidebarContent"],
+[data-testid="stSidebarUserContent"],
+[data-testid="stSidebarHeader"] {{ background: transparent !important; }}
 .sidebar-title {{
     font-family: 'Space Grotesk', sans-serif;
     font-size: 0.75rem; font-weight: 700; letter-spacing: 0.08em;
