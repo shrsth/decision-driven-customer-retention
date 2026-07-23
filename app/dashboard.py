@@ -18,6 +18,7 @@ from app.analysis import (  # noqa: E402
     compute_decision_boundary_zone,
     compute_roi_sensitivity,
     compute_policy_comparison,
+    compute_optimality_gap,
     compute_sensitivity,
 )
 from app import charts
@@ -235,6 +236,26 @@ with tab_robustness:
         f"{lift:.0f}% more than the best naive rule. Targeting highest-CLV "
         "customers is nearly worthless here: high value but low churn risk means "
         "little revenue is actually at risk."
+    )
+
+    # --- Greedy vs. optimal allocation ---
+    section_header(
+        "How good is the greedy allocation?",
+        "The engine fills the budget greedily (fast). This checks it against the "
+        "provable optimum from an integer-programming solver — same budget and "
+        "capacity, exact 0/1 knapsack.",
+        icon="target",
+    )
+    gap = compute_optimality_gap(budget, max_customers, save_rate)
+    g1, g2, g3 = st.columns(3)
+    g1.metric("Greedy value", f"${gap['greedy_value']:,.0f}")
+    g2.metric("Optimal value (ILP)", f"${gap['optimal_value']:,.0f}")
+    g3.metric("Greedy captures", f"{gap['capture_pct']:.1f}%")
+    st.caption(
+        f"Greedy funds {gap['greedy_customers']} customers vs the optimum's "
+        f"{gap['optimal_customers']}, capturing {gap['capture_pct']:.1f}% of the "
+        "best-possible value — so the fast heuristic is an evidenced trade-off, "
+        "not an assumption."
     )
 
     # --- Assumption sensitivity ---

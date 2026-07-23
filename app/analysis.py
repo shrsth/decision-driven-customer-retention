@@ -3,6 +3,7 @@ import streamlit as st
 
 from app.core import decide, score_customers
 from src.config import SAVE_RATE
+from src.decision.optimizer import optimality_gap
 from src.decision.retention_strategy import compare_policies, save_rate_sensitivity
 
 STRATEGIES = ["Conservative", "Balanced", "Aggressive"]
@@ -62,6 +63,12 @@ def compute_policy_comparison(budget, max_customers, save_rate=SAVE_RATE):
     return compare_policies(
         get_scored_customers(), budget, max_customers, save_rate
     )
+
+
+@st.cache_data(show_spinner=False)
+def compute_optimality_gap(budget, max_customers, save_rate=SAVE_RATE):
+    """Greedy value vs the provable optimum (ILP) under the same constraints."""
+    return optimality_gap(get_scored_customers(), budget, max_customers, save_rate)
 
 
 def compute_sensitivity(budget, max_customers, strategy, save_rate=SAVE_RATE):

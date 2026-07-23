@@ -2,6 +2,7 @@ numpy
 pandas
 scikit-learn>=1.2
 scipy
+pulp
 streamlit
 plotly
 joblib
