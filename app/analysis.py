@@ -78,6 +78,15 @@ def compute_sensitivity(budget, max_customers, strategy, save_rate=SAVE_RATE):
     return save_rate_sensitivity(act, save_rate)
 
 
+@st.cache_data(show_spinner=False)
+def compute_simulation(budget, max_customers, strategy, save_rate=SAVE_RATE):
+    """Monte Carlo ROI distribution for the current ACT set."""
+    from src.simulation import simulate_decision_quality
+    final_df = compute_decisions_cached(budget, max_customers, strategy, save_rate)
+    act = final_df[final_df["action_segment"] == "ACT"]
+    return simulate_decision_quality(act, save_rate)
+
+
 def _act_sets(budget, max_customers, save_rate):
     return {
         strat: set(

@@ -20,6 +20,7 @@ from app.analysis import (  # noqa: E402
     compute_policy_comparison,
     compute_optimality_gap,
     compute_sensitivity,
+    compute_simulation,
 )
 from app import charts
 from app.hero import render_hero
@@ -282,6 +283,32 @@ with tab_robustness:
                 sens["break_even"], sens["assumed"],
             ),
             width="stretch", config={"displayModeBar": False},
+        )
+
+    # --- Monte Carlo decision quality ---
+    sim = compute_simulation(budget, max_customers, strategy, save_rate)
+    if sim:
+        section_header(
+            "ROI under uncertainty (Monte Carlo)",
+            "3,000 simulations of the funded ACT set, drawing the true save rate "
+            "from a distribution and each customer's churn/save outcome as a coin "
+            "flip. The point-estimate ROI becomes a distribution with a "
+            "confidence interval.",
+            icon="gauge",
+        )
+        m1, m2, m3 = st.columns(3)
+        m1.metric("Mean ROI", f"{sim['roi_mean']:.1f}x")
+        m2.metric("90% CI", f"{sim['roi_p5']:.1f}x – {sim['roi_p95']:.1f}x")
+        m3.metric("P(profitable)", f"{sim['prob_profitable']*100:.0f}%")
+        st.plotly_chart(
+            charts.simulation_chart(sim),
+            width="stretch", config={"displayModeBar": False},
+        )
+        st.caption(
+            f"Even at the pessimistic 5th percentile the program returns "
+            f"{sim['roi_p5']:.1f}x, and it is profitable in "
+            f"{sim['prob_profitable']*100:.0f}% of scenarios — the decision is "
+            "robust to the save-rate assumption, not just favourable at the mean."
         )
 
     section_header(

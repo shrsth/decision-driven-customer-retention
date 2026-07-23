@@ -206,6 +206,33 @@ def profit_threshold_chart(pt):
     return fig
 
 
+def simulation_chart(sim):
+    """Histogram of simulated ROI with the 90% CI band and break-even line."""
+    rois = sim["rois"]
+    fig = go.Figure()
+    fig.add_trace(go.Histogram(
+        x=rois, nbinsx=44,
+        marker=dict(color=SERIES_BLUE, line=dict(width=0)),
+        opacity=0.85, hovertemplate="ROI %{x:.1f}x<br>%{y} scenarios<extra></extra>",
+    ))
+    # 90% CI shaded band
+    fig.add_vrect(
+        x0=sim["roi_p5"], x1=sim["roi_p95"],
+        fillcolor=SERIES_BLUE, opacity=0.10, line_width=0,
+    )
+    fig.add_vline(x=sim["roi_mean"], line=dict(color=STATUS_GOOD, width=2),
+                  annotation_text=f"mean {sim['roi_mean']:.1f}x",
+                  annotation_position="top", annotation_font_color=INK_MUTED)
+    fig.add_vline(x=0, line=dict(color=STATUS_CRITICAL, width=1.5, dash="dot"),
+                  annotation_text="break-even",
+                  annotation_position="top left", annotation_font_color=INK_MUTED)
+    layout = _base_layout(height=320)
+    layout["xaxis"].update(title="Realized retention ROI (x)")
+    layout["yaxis"].update(title="Scenarios")
+    fig.update_layout(**layout)
+    return fig
+
+
 def feature_importance_chart(rows):
     """Standardized LR coefficients — churn drivers vs. protective factors.
 
