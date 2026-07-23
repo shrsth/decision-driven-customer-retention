@@ -10,6 +10,7 @@ wrapped in CalibratedClassifierCV.
 from pathlib import Path
 
 import joblib
+import numpy as np
 import pandas as pd
 from sklearn.compose import ColumnTransformer
 from sklearn.ensemble import HistGradientBoostingClassifier
@@ -27,10 +28,39 @@ from sklearn.model_selection import StratifiedKFold, cross_validate, train_test_
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import OneHotEncoder, StandardScaler
 
-from src.config import MODEL_PATH
+from src.config import MODEL_PATH, SAVE_RATE
 from src.features.feature_builder import CATEGORICAL_FEATURES, NUMERIC_FEATURES
 
 TARGET = "churned"
+
+
+def profit_threshold(y_true, probs, clv, cost, save_rate=SAVE_RATE, n_steps=50):
+    """Churn-probability cutoff that maximizes *realized* value on the holdout.
+
+    For a candidate cutoff t, we "act" on every customer with predicted churn
+    prob >= t. Backtested on the real labels, acting on a customer returns
+    save_rate * (actually churned) * CLV - cost. Summing over the acted set
+    gives the realized value at t; the best t beats the naive 0.5 cutoff. This
+    is how a probability becomes a cost-aware decision.
+    """
+    y_true = np.asarray(y_true, dtype=float)
+    probs = np.asarray(probs, dtype=float)
+    clv = np.asarray(clv, dtype=float)
+    cost = np.asarray(cost, dtype=float)
+
+    per_customer = save_rate * y_true * clv - cost
+    thresholds = np.linspace(0.0, 1.0, n_steps + 1)
+    values = np.array([float(per_customer[probs >= t].sum()) for t in thresholds])
+
+    best_i = int(values.argmax())
+    half_i = int(np.argmin(np.abs(thresholds - 0.5)))
+    return {
+        "thresholds": thresholds.round(3).tolist(),
+        "values": values.round(1).tolist(),
+        "best_threshold": float(thresholds[best_i]),
+        "best_value": float(values[best_i]),
+        "value_at_half": float(values[half_i]),
+    }
 
 
 def build_pipeline() -> Pipeline:
@@ -110,12 +140,14 @@ def train_and_evaluate(
     test_size: float = 0.20,
     random_state: int = 42,
 ) -> tuple[Pipeline, dict]:
-    X = df[NUMERIC_FEATURES + CATEGORICAL_FEATURES]
-    y = df[TARGET]
-
-    X_train, X_test, y_train, y_test = train_test_split(
-        X, y, test_size=test_size, random_state=random_state, stratify=y
+    feature_cols = NUMERIC_FEATURES + CATEGORICAL_FEATURES
+    # Split the frame (not just X/y) so CLV and cost stay aligned to the test
+    # rows for the profit-threshold backtest.
+    df_train, df_test = train_test_split(
+        df, test_size=test_size, random_state=random_state, stratify=df[TARGET]
     )
+    X_train, y_train = df_train[feature_cols], df_train[TARGET]
+    X_test, y_test = df_test[feature_cols], df_test[TARGET]
 
     pipeline = build_pipeline()
     pipeline.fit(X_train, y_train)
@@ -134,6 +166,9 @@ def train_and_evaluate(
         "max_predicted_prob": probs.max(),
         "share_prob_ge_0.60": (probs >= 0.60).mean(),
         "calibration_table": calibration_table(y_test, probs),
+        "profit_threshold": profit_threshold(
+            y_test, probs, df_test["CLV"], df_test["retention_cost"]
+        ),
     }
     return pipeline, metrics
 

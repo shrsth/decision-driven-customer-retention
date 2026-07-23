@@ -41,6 +41,7 @@ def run_pipeline(force_download: bool = False) -> dict:
     print(f"[pipeline] Model saved to {artifact}")
 
     calibration = metrics.pop("calibration_table")
+    profit_thr = metrics.pop("profit_threshold")
     segments = churn_summary_by_segment(DB_PATH)
 
     print("[pipeline] Cross-validated model bake-off (5-fold)...")
@@ -57,6 +58,7 @@ def run_pipeline(force_download: bool = False) -> dict:
                 "segments": segments.to_dict(orient="records"),
                 "model_comparison": comparison.round(4).to_dict(orient="records"),
                 "feature_importance": importances.round(4).to_dict(orient="records"),
+                "profit_threshold": profit_thr,
                 "churn_rate": float(customers["churned"].mean()),
                 "n_customers": int(len(customers)),
             },
@@ -74,6 +76,12 @@ def run_pipeline(force_download: bool = False) -> dict:
 
     print("\n[pipeline] Top churn drivers (logistic-regression coefficients):")
     print(importances.round(3).to_string(index=False))
+
+    print(
+        f"\n[pipeline] Profit-maximizing threshold: {profit_thr['best_threshold']:.2f} "
+        f"(value ${profit_thr['best_value']:,.0f} vs ${profit_thr['value_at_half']:,.0f} "
+        "at the naive 0.5 cutoff)"
+    )
 
     print("\n[pipeline] Calibration by probability decile "
           "(predicted vs. actual should track):")

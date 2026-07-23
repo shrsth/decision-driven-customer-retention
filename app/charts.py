@@ -174,6 +174,38 @@ def policy_comparison_chart(rows):
     return fig
 
 
+def profit_threshold_chart(pt):
+    """Realized holdout value as a function of the churn-probability cutoff.
+
+    Marks the profit-maximizing threshold vs. the naive 0.5 cutoff.
+    """
+    xs = [t * 100 for t in pt["thresholds"]]
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(
+        x=xs, y=pt["values"], mode="lines",
+        line=dict(color=SERIES_BLUE, width=2),
+        hovertemplate="cutoff %{x:.0f}%<br>value $%{y:,.0f}<extra></extra>",
+        name="Realized value",
+    ))
+    fig.add_hline(y=0, line=dict(color=BASELINE, width=1))
+    fig.add_vline(
+        x=pt["best_threshold"] * 100,
+        line=dict(color=STATUS_GOOD, width=1.5, dash="dash"),
+        annotation_text=f"best {pt['best_threshold']*100:.0f}%",
+        annotation_position="top right", annotation_font_color=INK_MUTED,
+    )
+    fig.add_vline(
+        x=50, line=dict(color=STATUS_CRITICAL, width=1.5, dash="dot"),
+        annotation_text="naive 50%",
+        annotation_position="top left", annotation_font_color=INK_MUTED,
+    )
+    layout = _base_layout(height=320)
+    layout["xaxis"].update(title="Act-if churn probability >= cutoff (%)")
+    layout["yaxis"].update(title="Realized value on holdout ($)")
+    fig.update_layout(**layout)
+    return fig
+
+
 def feature_importance_chart(rows):
     """Standardized LR coefficients — churn drivers vs. protective factors.
 

@@ -80,6 +80,25 @@ def test_feature_importances(fitted_pipeline):
     assert not imp["feature"].str.startswith(("num__", "cat__")).any()
 
 
+def test_profit_threshold():
+    import numpy as np
+
+    from src.models.train_logistic import profit_threshold
+
+    rng = np.random.default_rng(0)
+    n = 500
+    probs = rng.uniform(0, 1, n)
+    y = (rng.uniform(0, 1, n) < probs).astype(int)
+    clv = rng.uniform(500, 5000, n)
+    cost = rng.uniform(50, 150, n)
+
+    pt = profit_threshold(y, probs, clv, cost, save_rate=0.3)
+    assert 0.0 <= pt["best_threshold"] <= 1.0
+    # the optimum is at least as good as the naive 0.5 cutoff, by construction
+    assert pt["best_value"] >= pt["value_at_half"] - 1e-6
+    assert len(pt["thresholds"]) == len(pt["values"])
+
+
 def test_calibration_table_shape_and_bounds():
     import numpy as np
 

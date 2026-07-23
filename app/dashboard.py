@@ -400,6 +400,25 @@ with tab_model:
                 width="stretch", config={"displayModeBar": False},
             )
 
+        pt = metrics.get("profit_threshold")
+        if pt:
+            section_header(
+                "Profit-maximizing threshold",
+                "A probability is not a decision until you pick a cutoff. This is "
+                "the act-if-above cutoff that maximizes realized value on the "
+                "holdout — not the arbitrary 0.5.",
+                icon="gauge",
+            )
+            uplift = pt["best_value"] - pt["value_at_half"]
+            c1, c2, c3 = st.columns(3)
+            c1.metric("Best cutoff", f"{pt['best_threshold']*100:.0f}%")
+            c2.metric("Value at best cutoff", f"${pt['best_value']:,.0f}")
+            c3.metric("Gain over naive 50%", f"${uplift:,.0f}")
+            st.plotly_chart(
+                charts.profit_threshold_chart(pt),
+                width="stretch", config={"displayModeBar": False},
+            )
+
         comparison = metrics.get("model_comparison")
         if comparison:
             section_header(
