@@ -63,8 +63,12 @@ _CSS = f"""
 
 /* Scrim over the Ferrofluid background canvas (injected behind .stApp at
    z-index -1): keeps text readable while letting the fluid show with character. */
-.stApp {{ background: rgba(11, 12, 15, 0.46); font-family: 'Inter', system-ui, sans-serif; }}
-[data-testid="stAppViewContainer"], [data-testid="stMain"] {{ background: transparent; }}
+.stApp {{ background: transparent; font-family: 'Inter', system-ui, sans-serif; }}
+[data-testid="stAppViewContainer"] {{ background: transparent; }}
+/* Put the readability scrim on the MAIN column only. If it sat on .stApp it
+   would also dim the fluid behind the sidebar, leaving the frosted glass
+   nothing to blur. */
+[data-testid="stMain"] {{ background: rgba(11, 12, 15, 0.46); }}
 /* Set the body font on the app root only — never on `span`, or it clobbers
    Streamlit's Material icon font (the sidebar-collapse arrow etc.). */
 .stApp p, .stApp label, .block-container {{ font-family: 'Inter', system-ui, sans-serif; }}
@@ -246,10 +250,12 @@ button[data-baseweb="tab"],
    or they'd paint over the effect. */
 [data-testid="stSidebar"] {{
     background:
-        linear-gradient(180deg, rgba(255,255,255,0.055), rgba(255,255,255,0.015)),
-        rgba(14, 15, 20, 0.38) !important;
-    backdrop-filter: blur(26px) saturate(1.5);
-    -webkit-backdrop-filter: blur(26px) saturate(1.5);
+        linear-gradient(180deg, rgba(255,255,255,0.05), rgba(255,255,255,0.012)),
+        rgba(14, 15, 20, 0.30) !important;
+    /* Keep the blur modest: the background is made of thin bright filaments, and
+       a large radius diffuses them until nothing is left to see. */
+    backdrop-filter: blur(9px) saturate(1.45);
+    -webkit-backdrop-filter: blur(9px) saturate(1.45);
     border-right: 1px solid rgba(255, 255, 255, 0.10);
     box-shadow: 1px 0 28px rgba(0, 0, 0, 0.38);
 }}
