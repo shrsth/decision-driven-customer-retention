@@ -14,6 +14,7 @@ from contextlib import asynccontextmanager
 from typing import Literal
 
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
 from app.core import load_and_compute_decisions
@@ -34,6 +35,14 @@ app = FastAPI(
     version="1.0.0",
     summary="Turns churn predictions into budget-constrained retention actions.",
     lifespan=lifespan,
+)
+
+# Allow the static React frontend (served from file:// or any host) to call it.
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 

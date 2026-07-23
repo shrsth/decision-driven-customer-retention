@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Retention Decisions — React client</title>
+  <!-- Minimal React frontend that consumes the FastAPI decision service.
+       Start the API first:  uvicorn api:app  (http://localhost:8000)
+       Then open this file in a browser. -->
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <style>
+    :root { color-scheme: dark; }
+    body { margin: 0; background: #0d0d0f; color: #ecedf2;
+      font-family: system-ui, "Segoe UI", sans-serif; }
+    .wrap { max-width: 1040px; margin: 0 auto; padding: 36px 24px 64px; }
+    h1 { font-size: 1.7rem; letter-spacing: -0.5px; margin: 0 0 4px; }
+    .sub { color: #a4abbb; margin: 0 0 28px; }
+    .controls { display: flex; gap: 16px; flex-wrap: wrap; align-items: end;
+      background: #16171d; border: 1px solid #262a33; border-radius: 14px; padding: 18px; }
+    label { display: block; font-size: 0.72rem; text-transform: uppercase;
+      letter-spacing: 0.06em; color: #8a90a0; margin-bottom: 6px; }
+    input, select { background: #0f1013; color: #ecedf2; border: 1px solid #333;
+      border-radius: 8px; padding: 8px 10px; font-size: 0.95rem; }
+    button { background: #3987e5; color: #fff; border: none; border-radius: 8px;
+      padding: 9px 18px; font-weight: 600; cursor: pointer; }
+    button:disabled { opacity: 0.5; cursor: default; }
+    .kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin: 24px 0; }
+    .kpi { background: #16171d; border: 1px solid #262a33; border-radius: 12px; padding: 14px 18px; }
+    .kpi .lab { font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.05em; color: #8a90a0; }
+    .kpi .val { font-size: 1.5rem; font-weight: 700; margin-top: 4px; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+    th, td { text-align: left; padding: 9px 10px; border-bottom: 1px solid #23262f; }
+    th { color: #8a90a0; font-weight: 600; font-size: 0.72rem; text-transform: uppercase; }
+    td.num { text-align: right; font-variant-numeric: tabular-nums; }
+    .err { color: #e66767; margin-top: 16px; }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+  <script type="text/babel">
+    const { useState } = React;
+    const API_DEFAULT = "http://localhost:8000";
+
+    function App() {
+      const [api, setApi] = useState(API_DEFAULT);
+      const [budget, setBudget] = useState(25000);
+      const [strategy, setStrategy] = useState("Balanced");
+      const [saveRate, setSaveRate] = useState(0.3);
+      const [data, setData] = useState(null);
+      const [err, setErr] = useState(null);
+      const [loading, setLoading] = useState(false);
+
+      async function run() {
+        setLoading(true); setErr(null);
+        try {
+          const r = await fetch(api + "/decisions", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              budget: Number(budget), strategy,
+              save_rate: Number(saveRate), max_customers: 300,
+            }),
+          });
+          if (!r.ok) throw new Error("API " + r.status);
+          setData(await r.json());
+        } catch (e) {
+          setErr("Could not reach the API at " + api + " — is `uvicorn api:app` running? (" + e.message + ")");
+          setData(null);
+        } finally { setLoading(false); }
+      }
+
+      const money = (x) => "$" + Math.round(x).toLocaleString();
+
+      return (
+        <div className="wrap">
+          <h1>Decision-Driven Customer Retention</h1>
+          <p className="sub">A React client for the retention decision API — same engine, no Streamlit.</p>
+
+          <div className="controls">
+            <div><label>API URL</label><input value={api} size={26} onChange={(e) => setApi(e.target.value)} /></div>
+            <div><label>Budget ($)</label><input type="number" value={budget} onChange={(e) => setBudget(e.target.value)} /></div>
+            <div><label>Strategy</label>
+              <select value={strategy} onChange={(e) => setStrategy(e.target.value)}>
+                <option>Conservative</option><option>Balanced</option><option>Aggressive</option>
+              </select>
+            </div>
+            <div><label>Save rate</label><input type="number" step="0.05" min="0.1" max="1" value={saveRate} onChange={(e) => setSaveRate(e.target.value)} /></div>
+            <button onClick={run} disabled={loading}>{loading ? "Computing…" : "Get decisions"}</button>
+          </div>
+
+          {err && <p className="err">{err}</p>}
+
+          {data && (
+            <div>
+              <div className="kpis">
+                <div className="kpi"><div className="lab">Act on</div><div className="val">{data.act_count}</div></div>
+                <div className="kpi"><div className="lab">Revenue saved</div><div className="val">{money(data.expected_revenue_saved)}</div></div>
+                <div className="kpi"><div className="lab">Budget used</div><div className="val">{money(data.budget_used)}</div></div>
+                <div className="kpi"><div className="lab">ROI</div><div className="val">{data.roi.toFixed(1)}x</div></div>
+              </div>
+              <table>
+                <thead><tr><th>Customer</th><th>Risk</th><th className="num">Churn</th><th className="num">CLV</th><th className="num">Net value</th><th>Recommended action</th></tr></thead>
+                <tbody>
+                  {data.act_customers.slice(0, 25).map((c) => (
+                    <tr key={c.customer_id}>
+                      <td>{c.customer_id}</td><td>{c.risk_band}</td>
+                      <td className="num">{c.churn_probability.toFixed(2)}</td>
+                      <td className="num">{money(c.clv)}</td>
+                      <td className="num">{money(c.net_retention_value)}</td>
+                      <td>{c.recommended_action}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+  </script>
+</body>
+</html>

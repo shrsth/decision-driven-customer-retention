@@ -127,6 +127,8 @@ curl -X POST http://localhost:8000/decisions \
 
 Returns the ranked ACT list (customer, risk, CLV, cost, net value, recommended action) plus a summary (`act_count`, `budget_used`, `expected_revenue_saved`, `roi`). See [api.py](api.py).
 
+A minimal **React client** ([frontend/index.html](frontend/index.html)) consumes this API — start `uvicorn api:app`, then open the file in a browser to run decisions from a non-Streamlit UI.
+
 ---
 
 ## ☁️ Deploy (Streamlit Community Cloud)
