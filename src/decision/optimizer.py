@@ -8,7 +8,6 @@ measures how close the cheap greedy comes to the provable optimum, so the
 greedy's use is an evidenced engineering trade-off rather than an assumption.
 """
 
-import pandas as pd
 import pulp
 
 from src.config import SAVE_RATE

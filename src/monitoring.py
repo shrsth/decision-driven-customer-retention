@@ -70,9 +70,9 @@ def drift_report(reference, current, numeric_cols, categorical_cols) -> pd.DataF
 
 def _demo():
     """Compare the Telco training data against a deliberately drifted batch."""
+    from src.config import RAW_DATA_PATH
     from src.features.feature_builder import CATEGORICAL_FEATURES, NUMERIC_FEATURES
     from src.ingest import clean_telco_data
-    from src.config import RAW_DATA_PATH
 
     ref = clean_telco_data(pd.read_csv(RAW_DATA_PATH))
     drifted = ref.copy()

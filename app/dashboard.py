@@ -10,24 +10,23 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 import pandas as pd  # noqa: E402
 import streamlit as st  # noqa: E402
 
+from app import charts
 from app.analysis import (  # noqa: E402
-    compute_decision_result,
-    compute_strategy_comparison,
-    compute_decision_stability,
-    compute_stability_attribution,
     compute_decision_boundary_zone,
-    compute_roi_sensitivity,
-    compute_policy_comparison,
+    compute_decision_result,
+    compute_decision_stability,
     compute_optimality_gap,
+    compute_policy_comparison,
+    compute_roi_sensitivity,
     compute_sensitivity,
     compute_simulation,
+    compute_stability_attribution,
+    compute_strategy_comparison,
 )
-from app import charts
-from app.hero import render_hero
 from app.ferrofluid import render_background
+from app.hero import render_hero
 from app.ui import inject_css, section_header, sidebar_title
 from src.config import DB_PATH, METRICS_PATH, MODEL_PATH
-
 
 # --------------------------------------------------
 # Page config

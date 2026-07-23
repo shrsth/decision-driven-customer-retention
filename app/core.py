@@ -2,14 +2,14 @@ import numpy as np
 import pandas as pd
 
 from src.config import SAVE_RATE
-from src.features.feature_builder import build_feature_table, FEATURES
-from src.models.train_logistic import load_model
 from src.decision.retention_strategy import (
     apply_decision_strategy,
+    assign_action_segments,
     build_retention_scores,
     select_customers_under_budget,
-    assign_action_segments
 )
+from src.features.feature_builder import FEATURES, build_feature_table
+from src.models.train_logistic import load_model
 
 # Model is loaded once and reused (joblib load is cheap but not free per call).
 _MODEL = None

@@ -9,7 +9,6 @@ Two rigor pieces that sit around the model bake-off:
   calibrated, so this is evidence, not decoration.
 """
 
-import numpy as np
 import pandas as pd
 from sklearn.calibration import CalibratedClassifierCV
 from sklearn.metrics import brier_score_loss
@@ -33,10 +32,12 @@ def tune_gbm(df: pd.DataFrame, n_trials: int = 20, cv: int = 3, random_state: in
 
     def objective(trial):
         params = {
-            "model__learning_rate": trial.suggest_float("learning_rate", 0.01, 0.3, log=True),
+            "model__learning_rate":
+                trial.suggest_float("learning_rate", 0.01, 0.3, log=True),
             "model__max_leaf_nodes": trial.suggest_int("max_leaf_nodes", 15, 63),
             "model__min_samples_leaf": trial.suggest_int("min_samples_leaf", 10, 100),
-            "model__l2_regularization": trial.suggest_float("l2_regularization", 1e-3, 10.0, log=True),
+            "model__l2_regularization":
+                trial.suggest_float("l2_regularization", 1e-3, 10.0, log=True),
             "model__max_iter": trial.suggest_int("max_iter", 100, 400),
         }
         pipe = build_gbm_pipeline().set_params(**params)

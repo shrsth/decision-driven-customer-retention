@@ -18,10 +18,10 @@ from src.config import (
     RAW_DATA_PATH,
 )
 from src.economics import add_economic_fields
-from src.survival import expected_remaining_by_group
 from src.features.feature_builder import build_feature_table
 from src.ingest import clean_telco_data, download_telco_data
 from src.load_to_sqlite import load_to_sqlite
+from src.logging_config import get_logger
 from src.models.train_logistic import (
     compare_models,
     feature_importances,
@@ -30,6 +30,9 @@ from src.models.train_logistic import (
 )
 from src.models.tuning import compare_calibration, tune_gbm
 from src.sql_feature_queries import churn_summary_by_segment
+from src.survival import expected_remaining_by_group
+
+log = get_logger("pipeline")
 
 
 def run_pipeline(force_download: bool = False, tune: bool = False) -> dict:
@@ -37,9 +40,9 @@ def run_pipeline(force_download: bool = False, tune: bool = False) -> dict:
 
     raw = pd.read_csv(csv_path)
     customers = add_economic_fields(clean_telco_data(raw))
-    print(
-        f"[pipeline] Cleaned {len(customers)} customers "
-        f"(churn rate {customers['churned'].mean():.1%})"
+    log.info(
+        "Cleaned %d customers (churn rate %.1f%%)",
+        len(customers), 100 * customers["churned"].mean(),
     )
 
     # CLV survival-method comparison: KM gives one lifetime per contract; Cox
@@ -49,10 +52,10 @@ def run_pipeline(force_download: bool = False, tune: bool = False) -> dict:
         customers, "Contract", "tenure", "churned", CLV_HORIZON_MONTHS
     )
     within = cox_rem.groupby(customers["Contract"]).std().mean()
-    print(
-        f"[pipeline] CLV lifetime via '{CLV_METHOD}' "
-        f"(corr with KM {cox_rem.corr(km_rem):.2f}; Cox adds "
-        f"{within:.1f}-month within-contract spread that KM cannot)"
+    log.info(
+        "CLV lifetime via '%s' (corr with KM %.2f; Cox adds %.1f-month "
+        "within-contract spread that KM cannot)",
+        CLV_METHOD, cox_rem.corr(km_rem), within,
     )
 
     load_to_sqlite(customers, DB_PATH)
@@ -60,22 +63,22 @@ def run_pipeline(force_download: bool = False, tune: bool = False) -> dict:
     features = build_feature_table(DB_PATH)
     pipeline, metrics = train_and_evaluate(features)
     artifact = save_model(pipeline, MODEL_PATH)
-    print(f"[pipeline] Model saved to {artifact}")
+    log.info("Model saved to %s", artifact)
 
     calibration = metrics.pop("calibration_table")
     profit_thr = metrics.pop("profit_threshold")
     segments = churn_summary_by_segment(DB_PATH)
 
-    print("[pipeline] Cross-validated model bake-off (5-fold)...")
+    log.info("Cross-validated model bake-off (5-fold)...")
     comparison = compare_models(features)
     importances = feature_importances(pipeline)
 
-    print("[pipeline] Calibration-method comparison...")
+    log.info("Calibration-method comparison...")
     calibration_methods = compare_calibration(features)
 
     gbm_tuning = None
     if tune:
-        print("[pipeline] Optuna gradient-boosting tuning (this takes ~30s)...")
+        log.info("Optuna gradient-boosting tuning (this takes ~30s)...")
         gbm_tuning = tune_gbm(features)
 
     # Persist a metrics artifact (model card) the dashboard reads without retraining.
@@ -97,7 +100,7 @@ def run_pipeline(force_download: bool = False, tune: bool = False) -> dict:
             fh,
             indent=2,
         )
-    print(f"[pipeline] Metrics saved to {METRICS_PATH}")
+    log.info("Metrics saved to %s", METRICS_PATH)
 
     print("\n[pipeline] Holdout metrics (logistic regression):")
     for name, value in metrics.items():

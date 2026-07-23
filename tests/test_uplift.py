@@ -46,7 +46,9 @@ def test_two_model_uplift_beats_propensity():
     import warnings
 
     from src.uplift import (
-        fit_two_model_uplift, load_hillstrom, response_scores,
+        fit_two_model_uplift,
+        load_hillstrom,
+        response_scores,
     )
 
     df = load_hillstrom()

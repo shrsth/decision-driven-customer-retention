@@ -6,6 +6,7 @@ pulp
 lifelines
 shap
 optuna
+pandera
 fastapi
 uvicorn
 httpx
