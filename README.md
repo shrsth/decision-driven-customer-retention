@@ -113,6 +113,22 @@ The dashboard **self-bootstraps**: on first launch it runs the pipeline automati
 
 ---
 
+## 🔌 API (headless backend)
+
+The decision engine is framework-agnostic — the same core runs behind a REST API with no Streamlit involved, so any system (a CRM, a scheduled job) can consume it:
+
+```bash
+uvicorn api:app --reload          # docs at http://localhost:8000/docs
+
+curl -X POST http://localhost:8000/decisions \
+  -H "Content-Type: application/json" \
+  -d '{"budget": 25000, "strategy": "Balanced", "save_rate": 0.30}'
+```
+
+Returns the ranked ACT list (customer, risk, CLV, cost, net value, recommended action) plus a summary (`act_count`, `budget_used`, `expected_revenue_saved`, `roi`). See [api.py](api.py).
+
+---
+
 ## ☁️ Deploy (Streamlit Community Cloud)
 
 1. Push this repo to GitHub.

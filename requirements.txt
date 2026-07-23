@@ -5,6 +5,9 @@ scipy
 pulp
 lifelines
 shap
+fastapi
+uvicorn
+httpx
 streamlit
 plotly
 joblib
