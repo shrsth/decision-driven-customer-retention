@@ -134,9 +134,17 @@ def decide(
         cost_median = final_df["retention_cost"].median()
         clv_high = final_df["CLV"].quantile(0.75)
         act_rows = final_df[act_mask]
-        final_df.loc[act_mask, "decision_reason"] = act_rows.apply(
-            generate_decision_reason, axis=1, args=(clv_median, cost_median)
-        )
+        # Real per-customer attributions from the model (SHAP); fall back to the
+        # rule-based reason if SHAP is unavailable.
+        try:
+            from src.models.explain import shap_reasons
+            final_df.loc[act_mask, "decision_reason"] = shap_reasons(
+                _get_model(), act_rows[FEATURES]
+            )
+        except Exception:
+            final_df.loc[act_mask, "decision_reason"] = act_rows.apply(
+                generate_decision_reason, axis=1, args=(clv_median, cost_median)
+            )
         final_df.loc[act_mask, "recommended_action"] = act_rows.apply(
             recommend_action, axis=1, args=(clv_high,)
         )
