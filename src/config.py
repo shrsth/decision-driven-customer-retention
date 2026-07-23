@@ -14,6 +14,13 @@ TELCO_URL = (
     "master/data/Telco-Customer-Churn.csv"
 )
 
+# Hillstrom email A/B-test dataset (has treatment/control) for uplift modeling.
+HILLSTROM_PATH = BASE_DIR / "data" / "raw" / "hillstrom.csv"
+HILLSTROM_URL = (
+    "http://www.minethatdata.com/"
+    "Kevin_Hillstrom_MineThatData_E-MailAnalytics_DataMiningChallenge_2008.03.20.csv"
+)
+
 # --------------------------------------------------
 # Economic assumptions (see docs/economic_assumptions.md)
 # --------------------------------------------------

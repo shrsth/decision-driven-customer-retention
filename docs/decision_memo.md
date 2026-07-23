@@ -176,6 +176,16 @@ only the scoring column would change. Until that experimental data exists, the
 current `save_rate` is a deliberately simple, transparent stand-in, and the
 sensitivity analysis quantifies exactly how much the conclusions depend on it.
 
+**Demonstrated on experimental data.** Because the method can't be shown
+honestly on Telco, `src/uplift.py` and `notebooks/02_uplift_hillstrom.ipynb`
+demonstrate it on the **Hillstrom email A/B test** (64k customers randomly split
+into email vs no email — a real treatment/control experiment). A two-model
+(T-learner) uplift estimator is evaluated with a **Qini curve**: ranking by
+uplift captures several times more *incremental* responders than ranking by
+response propensity (the Telco-style "target likely responders" approach). That
+gap is exactly the value the Telco engine leaves on the table for want of
+experimental data — and the blueprint for closing it.
+
 ---
 
 ## 11. Key Design Principle
