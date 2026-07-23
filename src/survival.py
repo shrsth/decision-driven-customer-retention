@@ -83,3 +83,46 @@ def expected_remaining_by_group(
             for tenure in group[duration_col]
         ]
     return remaining
+
+
+def cox_expected_remaining(
+    df, numeric_covariates, categorical_covariates,
+    duration_col, event_col, forward_months, penalizer=0.1,
+) -> pd.Series:
+    """Expected remaining months per customer from a Cox proportional-hazards fit.
+
+    Where the KM approach fits one curve per contract group, a Cox model uses
+    *all* covariates to give each customer their own survival curve S_i(t) —
+    a fully individualized, statistically grounded expected lifetime. Remaining
+    life is the restricted mean residual life over a forward window:
+    sum over u in (tenure, tenure+forward] of S_i(u) / S_i(tenure).
+    """
+    from lifelines import CoxPHFitter
+
+    X = pd.get_dummies(
+        df[numeric_covariates + categorical_covariates],
+        columns=categorical_covariates, drop_first=True,
+    ).astype(float)
+
+    fit_df = X.copy()
+    fit_df[duration_col] = df[duration_col].to_numpy()
+    fit_df[event_col] = df[event_col].to_numpy()
+
+    cph = CoxPHFitter(penalizer=penalizer)
+    cph.fit(fit_df, duration_col=duration_col, event_col=event_col)
+
+    max_t = int(df[duration_col].max()) + int(forward_months)
+    times = np.arange(0, max_t + 1)
+    sf = cph.predict_survival_function(X, times=times).to_numpy()  # (len(times), n)
+
+    tenures = df[duration_col].to_numpy().astype(int)
+    remaining = np.zeros(len(df))
+    for j in range(len(df)):
+        t0 = tenures[j]
+        s_t0 = sf[t0, j] if t0 < len(times) else sf[-1, j]
+        if s_t0 <= 1e-9:
+            continue
+        hi = min(t0 + int(forward_months), max_t)
+        if hi > t0:
+            remaining[j] = float((sf[t0 + 1:hi + 1, j] / s_t0).sum())
+    return pd.Series(remaining, index=df.index)

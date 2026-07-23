@@ -30,6 +30,43 @@ def test_survival_is_non_increasing():
     assert np.all(np.diff(surv) <= 1e-9)
 
 
+def test_cox_expected_remaining_individualizes_within_contract():
+    """Cox uses all covariates, so two customers on the same contract but with
+    different charges/services get different expected lifetimes — something the
+    per-contract KM estimator cannot do."""
+    import warnings
+
+    import pandas as pd
+
+    from src.survival import cox_expected_remaining
+
+    rng = np.random.default_rng(0)
+    n = 600
+    df = pd.DataFrame({
+        "tenure": rng.integers(1, 60, n),
+        "MonthlyCharges": rng.uniform(20, 110, n),
+        "TotalCharges": rng.uniform(50, 6000, n),
+        "Contract": rng.choice(["Month-to-month", "Two year"], n),
+        "InternetService": rng.choice(["Fiber optic", "DSL", "No"], n),
+    })
+    # churn more likely for high charges + month-to-month
+    p = 0.15 + 0.3 * (df["Contract"] == "Month-to-month") + 0.002 * df["MonthlyCharges"]
+    df["churned"] = (rng.uniform(0, 1, n) < p.clip(0, 1)).astype(int)
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        rem = cox_expected_remaining(
+            df, ["MonthlyCharges", "TotalCharges"],
+            ["Contract", "InternetService"], "tenure", "churned", 60,
+        )
+
+    assert (rem > 0).all() and rem.notna().all()
+    assert (rem <= 60 + 1e-6).all()
+    # within a single contract, expected lifetime still varies (KM would not)
+    m2m = rem[df["Contract"] == "Month-to-month"]
+    assert m2m.std() > 0.5
+
+
 def test_expected_remaining_life_bounded_and_higher_for_healthier_group():
     # Group A churns fast; group B rarely churns.
     times_a, surv_a = kaplan_meier([1, 2, 3, 4, 5], [1, 1, 1, 1, 1])

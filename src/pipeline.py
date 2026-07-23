@@ -9,8 +9,16 @@ import json
 
 import pandas as pd
 
-from src.config import DB_PATH, METRICS_PATH, MODEL_PATH, RAW_DATA_PATH
+from src.config import (
+    CLV_HORIZON_MONTHS,
+    CLV_METHOD,
+    DB_PATH,
+    METRICS_PATH,
+    MODEL_PATH,
+    RAW_DATA_PATH,
+)
 from src.economics import add_economic_fields
+from src.survival import expected_remaining_by_group
 from src.features.feature_builder import build_feature_table
 from src.ingest import clean_telco_data, download_telco_data
 from src.load_to_sqlite import load_to_sqlite
@@ -31,6 +39,19 @@ def run_pipeline(force_download: bool = False) -> dict:
     print(
         f"[pipeline] Cleaned {len(customers)} customers "
         f"(churn rate {customers['churned'].mean():.1%})"
+    )
+
+    # CLV survival-method comparison: KM gives one lifetime per contract; Cox
+    # individualizes it per customer using all covariates.
+    cox_rem = customers["CLV"] / customers["MRR"]
+    km_rem = expected_remaining_by_group(
+        customers, "Contract", "tenure", "churned", CLV_HORIZON_MONTHS
+    )
+    within = cox_rem.groupby(customers["Contract"]).std().mean()
+    print(
+        f"[pipeline] CLV lifetime via '{CLV_METHOD}' "
+        f"(corr with KM {cox_rem.corr(km_rem):.2f}; Cox adds "
+        f"{within:.1f}-month within-contract spread that KM cannot)"
     )
 
     load_to_sqlite(customers, DB_PATH)

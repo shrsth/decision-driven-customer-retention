@@ -42,7 +42,24 @@ and yield longer expected lifetimes — entirely from the data:
 This replaces the previous hand-tuned `BASE[contract] × (1 + tenure/72)`
 formula: the ordering is the same, but the numbers are now estimated rather
 than assumed, which is far easier to defend. Resulting CLV range: roughly
-$560–$7,100 per customer.
+$430–$7,100 per customer.
+
+### Cox proportional-hazards (per-customer lifetime)
+
+The production default (`CLV_METHOD = "cox"`) upgrades the per-*contract* KM
+curve to a per-*customer* one. A **Cox proportional-hazards model**
+(`lifelines`, in `src/survival.py::cox_expected_remaining`) fits a single
+baseline hazard modulated by each customer's covariates (monthly/total charges,
+contract, internet service, payment method, paperless billing, partner,
+dependents), giving every customer their own survival curve `S_i(t)` and hence
+their own expected remaining lifetime.
+
+The difference that matters: KM assigns *every* month-to-month customer the same
+~35-month lifetime, whereas Cox spreads them by ~9 months (a high-charge fiber
+customer gets a shorter lifetime than a low-charge DSL one on the same
+contract). Means still track KM by contract (~27 / 45 / 55 months, correlation
+~0.81), and concordance is ~0.90. Economics falls back to KM automatically if
+Cox is unavailable or the sample is under 200 rows (`src/economics.py`).
 
 ## Retention cost
 

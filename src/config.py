@@ -18,9 +18,19 @@ TELCO_URL = (
 # Economic assumptions (see docs/economic_assumptions.md)
 # --------------------------------------------------
 # CLV forward horizon: how many months ahead expected remaining lifetime is
-# accumulated. Expected remaining life itself is derived per-contract from a
-# Kaplan-Meier survival curve (src/survival.py), not a hand-tuned formula.
+# accumulated. Expected remaining life is derived from a survival model, not a
+# hand-tuned formula.
 CLV_HORIZON_MONTHS = 60
+
+# CLV survival method: "cox" (per-customer Cox proportional-hazards, uses all
+# covariates) or "km" (per-contract Kaplan-Meier). Cox is the richer model;
+# economics falls back to KM if Cox is unavailable or the sample is too small.
+CLV_METHOD = "cox"
+COX_NUMERIC_COVARIATES = ["MonthlyCharges", "TotalCharges"]
+COX_CATEGORICAL_COVARIATES = [
+    "Contract", "InternetService", "PaymentMethod",
+    "PaperlessBilling", "Partner", "Dependents",
+]
 
 # Retention offer: a win-back discount of DISCOUNT_RATE off MRR for
 # OFFER_MONTHS, plus a contract-dependent outreach cost.

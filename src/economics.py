@@ -9,11 +9,39 @@ import pandas as pd
 
 from src.config import (
     CLV_HORIZON_MONTHS,
+    CLV_METHOD,
+    COX_CATEGORICAL_COVARIATES,
+    COX_NUMERIC_COVARIATES,
     DISCOUNT_RATE,
     OFFER_MONTHS,
     OUTREACH_COST,
 )
-from src.survival import expected_remaining_by_group
+from src.survival import cox_expected_remaining, expected_remaining_by_group
+
+# Cox needs a reasonable sample to fit; below this we use Kaplan-Meier.
+_MIN_COX_ROWS = 200
+
+
+def expected_remaining_months(df: pd.DataFrame) -> pd.Series:
+    """Per-customer expected remaining lifetime, via Cox or KM.
+
+    Cox (per-customer, uses all covariates) is preferred; falls back to the
+    per-contract Kaplan-Meier estimator if Cox is unavailable, the sample is
+    too small, or the fit misbehaves.
+    """
+    if CLV_METHOD == "cox" and len(df) >= _MIN_COX_ROWS:
+        try:
+            rem = cox_expected_remaining(
+                df, COX_NUMERIC_COVARIATES, COX_CATEGORICAL_COVARIATES,
+                "tenure", "churned", CLV_HORIZON_MONTHS,
+            )
+            if rem.notna().all() and (rem > 0).all():
+                return rem
+        except Exception:
+            pass  # fall through to KM
+    return expected_remaining_by_group(
+        df, "Contract", "tenure", "churned", CLV_HORIZON_MONTHS
+    )
 
 
 def add_economic_fields(df: pd.DataFrame) -> pd.DataFrame:
@@ -23,18 +51,9 @@ def add_economic_fields(df: pd.DataFrame) -> pd.DataFrame:
     df["plan"] = df["Contract"]
     df["MRR"] = df["MonthlyCharges"]
 
-    # CLV: expected remaining revenue = MRR x empirical expected remaining
-    # lifetime. Lifetime comes from a Kaplan-Meier survival curve fit per
-    # contract type on the (right-censored) tenure/churn data — data-derived,
-    # not a hand-tuned formula.
-    expected_remaining_months = expected_remaining_by_group(
-        df,
-        group_col="Contract",
-        duration_col="tenure",
-        event_col="churned",
-        forward_months=CLV_HORIZON_MONTHS,
-    )
-    df["CLV"] = df["MRR"] * expected_remaining_months
+    # CLV: expected remaining revenue = MRR x expected remaining lifetime,
+    # estimated from a survival model (Cox per-customer, or KM per-contract).
+    df["CLV"] = df["MRR"] * expected_remaining_months(df)
 
     # Retention cost: contract-dependent outreach cost plus a win-back
     # discount that scales with MRR — so cost varies per customer.
