@@ -5,6 +5,7 @@ scipy
 pulp
 lifelines
 shap
+optuna
 fastapi
 uvicorn
 httpx

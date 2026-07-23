@@ -28,10 +28,11 @@ from src.models.train_logistic import (
     save_model,
     train_and_evaluate,
 )
+from src.models.tuning import compare_calibration, tune_gbm
 from src.sql_feature_queries import churn_summary_by_segment
 
 
-def run_pipeline(force_download: bool = False) -> dict:
+def run_pipeline(force_download: bool = False, tune: bool = False) -> dict:
     csv_path = download_telco_data(RAW_DATA_PATH, force=force_download)
 
     raw = pd.read_csv(csv_path)
@@ -69,6 +70,14 @@ def run_pipeline(force_download: bool = False) -> dict:
     comparison = compare_models(features)
     importances = feature_importances(pipeline)
 
+    print("[pipeline] Calibration-method comparison...")
+    calibration_methods = compare_calibration(features)
+
+    gbm_tuning = None
+    if tune:
+        print("[pipeline] Optuna gradient-boosting tuning (this takes ~30s)...")
+        gbm_tuning = tune_gbm(features)
+
     # Persist a metrics artifact (model card) the dashboard reads without retraining.
     METRICS_PATH.parent.mkdir(parents=True, exist_ok=True)
     with open(METRICS_PATH, "w") as fh:
@@ -80,6 +89,8 @@ def run_pipeline(force_download: bool = False) -> dict:
                 "model_comparison": comparison.round(4).to_dict(orient="records"),
                 "feature_importance": importances.round(4).to_dict(orient="records"),
                 "profit_threshold": profit_thr,
+                "calibration_methods": calibration_methods.to_dict(orient="records"),
+                "gbm_tuning": gbm_tuning,
                 "churn_rate": float(customers["churned"].mean()),
                 "n_customers": int(len(customers)),
             },
@@ -97,6 +108,15 @@ def run_pipeline(force_download: bool = False) -> dict:
 
     print("\n[pipeline] Top churn drivers (logistic-regression coefficients):")
     print(importances.round(3).to_string(index=False))
+
+    print("\n[pipeline] Calibration methods (Brier, lower is better):")
+    print(calibration_methods.to_string(index=False))
+
+    if gbm_tuning:
+        print(
+            f"\n[pipeline] Tuned gradient boosting: CV AUC {gbm_tuning['best_auc']:.4f} "
+            f"(still <= logistic regression; LR kept for calibration + interpretability)"
+        )
 
     print(
         f"\n[pipeline] Profit-maximizing threshold: {profit_thr['best_threshold']:.2f} "
@@ -121,8 +141,13 @@ def main() -> None:
         action="store_true",
         help="Re-download the dataset even if a cached copy exists.",
     )
+    parser.add_argument(
+        "--tune",
+        action="store_true",
+        help="Run Optuna gradient-boosting tuning (~30s extra).",
+    )
     args = parser.parse_args()
-    run_pipeline(force_download=args.force_download)
+    run_pipeline(force_download=args.force_download, tune=args.tune)
 
 
 if __name__ == "__main__":

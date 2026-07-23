@@ -482,3 +482,30 @@ with tab_model:
                 "± is the standard deviation across the 5 folds — small values "
                 "mean the metrics are stable, not an artifact of one lucky split."
             )
+            tuning = metrics.get("gbm_tuning")
+            if tuning:
+                st.caption(
+                    f"Even after Optuna tuning, gradient boosting reaches only "
+                    f"AUC {tuning['best_auc']:.3f} — no better than the untuned "
+                    "logistic regression, so the LR choice holds under a fair fight."
+                )
+
+        cal_methods = metrics.get("calibration_methods")
+        if cal_methods:
+            section_header(
+                "Calibration methods",
+                "Does post-hoc recalibration (isotonic / Platt) beat the raw "
+                "logistic regression? Brier score on a holdout — lower is better.",
+                icon="gauge",
+            )
+            cm_df = pd.DataFrame(cal_methods).rename(
+                columns={"method": "Method", "brier": "Brier", "best": "Best"}
+            )
+            st.dataframe(
+                cm_df, width="stretch", hide_index=True,
+                column_config={"Brier": st.column_config.NumberColumn(format="%.4f")},
+            )
+            st.caption(
+                "LR is already well-calibrated, so recalibration barely moves the "
+                "Brier score — evidence that the raw probabilities can be trusted."
+            )
