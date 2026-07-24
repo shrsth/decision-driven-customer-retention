@@ -16,6 +16,7 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
+from scipy.integrate import trapezoid
 from sklearn.compose import ColumnTransformer
 from sklearn.ensemble import HistGradientBoostingClassifier
 from sklearn.pipeline import Pipeline
@@ -105,5 +106,5 @@ def qini_curve(scores, treat, outcome):
     n = len(scores)
     fractions = np.arange(1, n + 1) / n
     random_line = fractions * qini[-1]
-    coefficient = float(np.trapz(qini - random_line, fractions))
+    coefficient = float(trapezoid(qini - random_line, fractions))
     return fractions, qini, coefficient
