@@ -22,5 +22,7 @@ check_untyped_defs = false
 warn_return_any = false
 
 [tool.coverage.run]
-source = ["src", "app", "api.py"]
+# Coverage `source` takes module/package names, not file paths — "api.py"
+# (with the extension) is never imported and breaks the run under NumPy 2.4.
+source = ["src", "app", "api"]
 omit = ["*/__init__.py"]
