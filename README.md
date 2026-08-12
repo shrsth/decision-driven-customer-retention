@@ -10,6 +10,19 @@ A **decision-first customer retention system** that converts churn predictions i
 
 ---
 
+## 📊 Results
+
+| Metric | Result |
+|---|---|
+| ROC AUC | 0.845 (5-fold CV, ±0.013) |
+| Brier | 0.136 |
+| Decision engine | $25K budget → 261 customers, ~$88.5K expected net value, 3.54× ROI |
+| Optimizer | Greedy captures ~100% of the exact ILP optimum |
+| Uplift | T-learner, Qini 1083 vs 148 on a 64K-customer A/B test |
+| Tests | 51 pytest, GitHub Actions running ruff + mypy + coverage |
+
+---
+
 ## 🚀 What This Project Does
 
 This is **not** a churn prediction dashboard.
